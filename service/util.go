@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"time"
 	"strconv"
+	"fmt"
 )
 
 /**
@@ -49,4 +50,16 @@ func IntToStr(data interface{}) string {
 	default:
 		return ""
 	}
+}
+
+/**
+	hash 值
+ */
+func getHash(app string, name string, time string, rand string, key string) string {
+	str := fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key)
+	return Sha1(str)
+}
+
+func toStr(data interface{}) string {
+	return IntToStr(data)
 }

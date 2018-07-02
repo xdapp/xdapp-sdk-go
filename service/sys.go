@@ -94,15 +94,3 @@ func (service *SysService) RegOk(data map[string]map[string]string, time int, ra
 func (service *SysService) Test(str string) {
 	fmt.Println(str)
 }
-
-/**
-	hash 值
- */
-func getHash(app string, name string, time string, rand string, key string) string {
-	str := fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key)
-	return Sha1(str)
-}
-
-func toStr(data interface{}) string {
-	return IntToStr(data)
-}
