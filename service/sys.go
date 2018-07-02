@@ -1,7 +1,6 @@
 package service
 
 import (
-	"../util"
 	"fmt"
 	"strings"
 )
@@ -20,22 +19,22 @@ func NewSysService(RegisterFace RegisterInterFace) *SysService {
 func (service *SysService) Reg(time int64, rand string, hash string) []interface{} {
 
 	// 当前方法名
-	fun := strings.ToLower(util.GetFuncName())
+	fun := strings.ToLower(GetFuncName())
 
 	// 验证hash
-	if util.Sha1(fmt.Sprintf("%s.%s.%s", toStr(time), rand, "xdapp.com")) != hash {
+	if Sha1(fmt.Sprintf("%s.%s.%s", toStr(time), rand, "xdapp.com")) != hash {
 		return []interface{} {fun, false};
 	}
 
 	// 超时
-	if util.Time() - time > 180 {
+	if Time() - time > 180 {
 		return []interface{} {fun, false};
 	}
 
 	app  := service.getApp()
 	key  := service.getKey()
 	name := service.getName()
-	time  = util.Time()
+	time  = Time()
 	hash  = getHash(app, name, toStr(time), rand, key)
 
 	arr := map[string]interface{}{"app": app, "name": name , "time": time, "rand": rand, "hash": hash}
@@ -101,9 +100,9 @@ func (service *SysService) Test(str string) {
  */
 func getHash(app string, name string, time string, rand string, key string) string {
 	str := fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key)
-	return util.Sha1(str)
+	return Sha1(str)
 }
 
 func toStr(data interface{}) string {
-	return util.IntToStr(data)
+	return IntToStr(data)
 }

@@ -1,7 +1,6 @@
 package register
 
 import (
-	"../util"
 	"bytes"
 )
 
@@ -34,8 +33,8 @@ func (cli *Client) CreateServiceSocket() {
 		} else {
 			for i := 0; i < dataLen; i += config.packageMaxLength {
 
-				chunkLength := util.Min(config.packageMaxLength, dataLen - i)
-				chunk := util.Substr(string(rs), i, chunkLength)
+				chunkLength := Min(config.packageMaxLength, dataLen - i)
+				chunk := Substr(string(rs), i, chunkLength)
 
 				flag := request.Flag
 				if dataLen - i == chunkLength {

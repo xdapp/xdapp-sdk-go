@@ -1,7 +1,6 @@
 package register
 
 import (
-	"../util"
 	"fmt"
 )
 
@@ -49,12 +48,12 @@ func (reg *RegisterData) checkConsolePageDiff() [][]string  {
 
 	key     := reg.getKey()
 	list 	:= getAllConsolePages()
-	listStr := util.JsonEncode(list)
-	timeStr := util.IntToStr(util.Time())
+	listStr := JsonEncode(list)
+	timeStr := IntToStr(Time())
 
 	fmt.Println("console view", listStr)
 
-	sign 	:= util.Md5(fmt.Sprintf("%s.%s.%s", timeStr, listStr, key))
+	sign 	:= Md5(fmt.Sprintf("%s.%s.%s", timeStr, listStr, key))
 
 	fmt.Println("reg.ServiceData", reg.ServiceData)
 	host 	:= reg.ServiceData["pageServer"]["host"]
@@ -62,9 +61,9 @@ func (reg *RegisterData) checkConsolePageDiff() [][]string  {
 
 	fmt.Println("请求的同步地址", reqUrl)
 
-	rs := util.CurlRequest(reqUrl, "list=" + listStr)
+	rs := CurlRequest(reqUrl, "list=" + listStr)
 	resp := RespFields{}
-	util.JsonDecode(rs, &resp)
+	JsonDecode(rs, &resp)
 
 	if  resp.Status == "" {
 		fmt.Println("RPC服务同步page文件获取列表信息解析json失败: " + rs)
@@ -89,7 +88,7 @@ func (reg *RegisterData) getUpdateFile(change []string, dirArr []string) {
 		fullPath = ""
 		for _, dir := range dirArr {
 
-			if util.PathExist(dir + f) {
+			if PathExist(dir + f) {
 				fullPath = dir + f
 				break
 			}
@@ -111,13 +110,13 @@ func (reg *RegisterData) updateConsolePage (file string, fullPath string) {
 	app 	:= reg.GetApp()
 	name 	:= reg.GetName()
 
-	hash 	:= util.Md5File(fullPath)
-	timeStr := util.IntToStr(util.Time())
-	sign    := util.Md5(fmt.Sprintf("%s.%s.%s.%s", timeStr, file, hash, key))
+	hash 	:= Md5File(fullPath)
+	timeStr := IntToStr(Time())
+	sign    := Md5(fmt.Sprintf("%s.%s.%s.%s", timeStr, file, hash, key))
 
 	reqUrl := fmt.Sprintf("%sup/%s/%s/%s?time=%s&hash=%s&sign=%s", host, app, name, file, timeStr, hash, sign)
 
-	err := util.PostFile(fullPath, reqUrl)
+	err := PostFile(fullPath, reqUrl)
 
 	if err != nil {
 		Debug("RPC服务成功上传console页面" + fullPath)
@@ -135,14 +134,14 @@ func (reg *RegisterData) deleteConsolePage(file string) {
 	app  := reg.GetApp()
 	name := reg.GetName()
 
-	timeStr := util.IntToStr(util.Time())
+	timeStr := IntToStr(Time())
 
-	sign := util.Md5(fmt.Sprintf("%s.%s.%s", timeStr, file, key))
+	sign := Md5(fmt.Sprintf("%s.%s.%s", timeStr, file, key))
 	url  := fmt.Sprintf("%srm/%s/%s/%s?time=%s&sign=%s", host, app, name, file, timeStr, sign)
-	rs   := util.CurlRequest(url, "")
+	rs   := CurlRequest(url, "")
 
 	resp := RespFields{}
-	util.JsonDecode(rs, &resp)
+	JsonDecode(rs, &resp)
 
 	if  resp.Status == "" {
 		Error("RPC服务删除文件" + file + "获取列表信息解析json失败: " + rs)
@@ -166,13 +165,13 @@ func getAllConsolePages() map[string]string {
 	dirArr := GetPath("console")
 	for _, dir := range dirArr {
 
-		files := util.FindAllFiles(dir)
+		files := FindAllFiles(dir)
 		for _, f := range files {
 
 			// 判断后缀名是tpl 、vue
-			base, ext := util.GetFileInfo(f)
+			base, ext := GetFileInfo(f)
 			if ext == ".tpl" || ext == ".vue" {
-				list[base] = util.Md5File(f)
+				list[base] = Md5File(f)
 			}
 		}
 	}

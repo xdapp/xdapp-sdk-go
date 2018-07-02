@@ -1,9 +1,6 @@
-package util
+package register
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
-	"runtime"
 	"path/filepath"
 	"strings"
 	"encoding/json"
@@ -14,28 +11,12 @@ import (
 	"time"
 	"strconv"
 	"path"
+	"net/http"
+	"io/ioutil"
+	"log"
+	"bytes"
+	"mime/multipart"
 )
-
-/**
-	获取sha1加密
-  */
-func Sha1(str string) string {
-	getHash := sha1.New()
-	getHash.Write([]byte(str))
-	r := getHash.Sum(nil)
-	return hex.EncodeToString(r[:])
-}
-
-/**
-	获取函数名
- */
-func GetFuncName() string {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	funcName = filepath.Ext(funcName)
-	funcName = strings.TrimPrefix(funcName, ".")
-	return funcName;
-}
 
 /**
 
@@ -87,29 +68,10 @@ func Md5(str string) string {
 }
 
 /**
-	字符串截取
- */
-func Substr(s string, pos int, length int) string {
-	runes := []rune(s)
-	l := pos + length
-	if l > len(runes) {
-		l = len(runes)
-	}
-	return string(runes[pos:l])
-}
-
-/**
 	当前时间
  */
 func Time() int64 {
 	return time.Now().Unix()
-}
-
-/**
-	时间字符串形式
- */
-func TimeStr() string {
-	return IntToStr(Time())
 }
 
 func IntToStr(data interface{}) string {
@@ -161,6 +123,17 @@ func Min(a, b int) int {
 	return b
 }
 
+/**
+	字符串截取
+ */
+func Substr(s string, pos int, length int) string {
+	runes := []rune(s)
+	l := pos + length
+	if l > len(runes) {
+		l = len(runes)
+	}
+	return string(runes[pos:l])
+}
 
 /**
 	获取当前文件夹下全部文件
@@ -178,4 +151,80 @@ func FindAllFiles(dir string) []string {
  */
 func GetFileInfo(f string) (string, string) {
 	return path.Base(f), path.Ext(f)
+}
+
+
+/**
+	执行curl
+ */
+func CurlRequest(reqUrl string, postStr string) string {
+	timeout := time.Duration(5 * time.Second)	//超时时间5s
+	client 	:= &http.Client{
+		Timeout: timeout,
+	}
+
+	request, err := http.NewRequest("POST", reqUrl, strings.NewReader(postStr))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Cookie", "")
+	response, err := client.Do(request)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(body)
+}
+
+/**
+	上传文件
+ */
+func PostFile(filename string, targetUrl string) error {
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+
+	//关键的一步操作
+	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
+	if err != nil {
+		fmt.Println("error writing to buffer")
+		return err
+	}
+
+	//打开文件句柄操作
+	fh, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("error opening file")
+		return err
+	}
+	defer fh.Close()
+
+	//iocopy
+	_, err = io.Copy(fileWriter, fh)
+	if err != nil {
+		return err
+	}
+
+	contentType := bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	resp, err := http.Post(targetUrl, contentType, bodyBuf)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	fmt.Println(resp.Status)
+	fmt.Println(string(body))
+	return nil
 }

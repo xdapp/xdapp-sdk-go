@@ -1,8 +1,7 @@
 package register
 
 import (
-	"../service"
-	"../util"
+	"hub000.xindong.com/core-system/server-register-go/service"
 	"strings"
 	"reflect"
 )
@@ -41,9 +40,9 @@ func (reg *RegisterData) LoadService() {
  */
 func loadServiceByPath(list *map[string]string, dir string, prefix string)  {
 
-	for _, f := range util.FindAllFiles(dir) {
+	for _, f := range FindAllFiles(dir) {
 
-		base, ext := util.GetFileInfo(f)
+		base, ext := GetFileInfo(f)
 		name := strings.ToLower(base)
 
 		if ext != ".go" {
