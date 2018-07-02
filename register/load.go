@@ -1,15 +1,19 @@
 package register
 
 import (
-	"hub000.xindong.com/core-system/server-register-go/service"
 	"strings"
 	"reflect"
 )
 
+type RpcService struct {
+	Sys interface{}				// 系统提供rpc服务
+	Normal interface{}			// 普通rpc服务
+}
+
 /**
 	加载rpc服务
  */
-func (reg *RegisterData) LoadService() {
+func LoadService(service *RpcService) {
 
 	dirArr := GetPath("service")
 
@@ -26,12 +30,12 @@ func (reg *RegisterData) LoadService() {
 	for name, _ := range list {
 		isSysCall := strings.ToLower(name) == "sys" || strings.ToLower(name) == "sys_"
 
-		var newService interface{}
-		newService = reg.NewService()
+		var curService interface{}
+		curService = service.Normal
 		if isSysCall {
-			newService = reg.NewSysService()
+			curService = service.Sys
 		}
-		AddRpcFunction(name, newService)
+		AddRpcFunction(name, curService)
 	}
 }
 
@@ -88,15 +92,4 @@ func AddRpcFunction(name string, avail interface{}) {
 		//args := []reflect.Value{reflect.ValueOf(m)} //初始化传入等参数，传入等类型只能是[]reflect.Value类型
 		//res := mv.Call(args)
 	}
-}
-
-/**
-	工厂注册
- */
-func (reg *RegisterData) NewService() *service.Service {
-	return service.NewService(service.RegisterInterFace(reg))
-}
-
-func (reg *RegisterData) NewSysService() *service.SysService {
-	return service.NewSysService(service.RegisterInterFace(reg))
 }

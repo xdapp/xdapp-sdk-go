@@ -67,7 +67,6 @@ func sendAnswer(cli *Client, flag byte, fd uint32, data string) {
 /**
 	初始化tcp client
  */
-func (reg *RegisterData) InitClient() {
-
+func (reg *RegisterData) CreateClient() {
 	reg.MyClient.CreateServiceSocket()
 }
