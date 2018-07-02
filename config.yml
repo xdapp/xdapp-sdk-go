@@ -1,0 +1,8 @@
+console:
+    app: test
+    name: name
+    key: aaaaaaaaaa
+    host: 127.0.0.1:8900
+    ssl: false
+
+env: dev
