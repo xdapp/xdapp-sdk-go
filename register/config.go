@@ -27,11 +27,9 @@ type console struct {
 }
 
 var (
-	conf configuration		// 配置
-	baseDir  = defaultBaseDir()
+	conf       configuration // 配置
+	baseDir    = defaultBaseDir()
 	configPath = defaultConfPath()
-	logName = "test.log"
-	isDebug = false 		// 是否debug模式
 )
 
 /**

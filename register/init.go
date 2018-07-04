@@ -22,7 +22,9 @@ type SRegister struct {
 
 var (
 	MyRpc   = NewMyRpc()
-	MyLog   *log4go.Logger 	// log日志
+	MyLog   *log4go.Logger // log日志
+	isDebug = false // 是否debug模式
+	logName = "test.log"
 )
 
 /**
@@ -178,6 +180,6 @@ func SetDebug(status bool) {
 /**
 	设置log日志文件路径
  */
-func SetLogFile(file string) {
-	logName = file
+func SetLogName(name string) {
+	logName = name
 }
