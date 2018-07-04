@@ -102,7 +102,7 @@ func StrToInt64(str string) int64 {
 }
 
 /**
-
+	判断文件存在
  */
 func PathExist(_path string) bool {
 	_, err := os.Stat(_path)

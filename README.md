@@ -45,3 +45,14 @@ func main() {
 }
 
 ```
+配置文件：
+
+config.yml
+```golang
+console:
+    app: test
+    name: name
+    key: aaaaaaaaaa
+    host: 127.0.0.1:8900
+    ssl: false
+```

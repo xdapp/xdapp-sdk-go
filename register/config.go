@@ -1,13 +1,13 @@
 package register
 
 import (
-	"fmt"
 	"gopkg.in/yaml.v2"
 	"path/filepath"
 	"io/ioutil"
 	"log"
 	"strings"
 )
+
 /**
 	配置
  */
@@ -26,26 +26,40 @@ type console struct {
 	Key  	string
 }
 
+/**
+	console 默认配置
+ */
+var defaultConsole = console{
+	"www.xdapp.com:8900",true,"test","console","",}
+
 var (
-	conf       configuration // 配置
-	baseDir    = defaultBaseDir()
-	configPath = defaultConfPath()
+	baseDir  = defaultBaseDir()
+	confPath = defaultConfPath()
+	conf     = configuration{defaultConsole} // 默认配置
 )
 
 /**
 	设置配置
  */
-func LoadConfig() {
+func LoadConfig() configuration {
 
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		fmt.Printf("yamlFile.Get err   #%v ", err)
+	if !PathExist(confPath) {
+		MyLog.Error("配置文件：" + confPath + "不存在！")
 	}
+
+	data, err := ioutil.ReadFile(confPath)
+	if err != nil {
+		MyLog.Error("读取配置文件错误 " + err.Error())
+	}
+
+	// 赋初始值
+	conf := configuration{defaultConsole}
 
 	err = yaml.Unmarshal(data, &conf)
 	if err != nil {
-		fmt.Printf("Unmarshal: %v", err)
+		MyLog.Error("解析配置文件错误", err.Error())
 	}
+	return conf
 }
 
 /**
