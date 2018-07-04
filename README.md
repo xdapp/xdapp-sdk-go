@@ -1,7 +1,7 @@
 安装
 ----------
 ```
-go get https://hub000.xindong.com/core-system/server-register-go
+go get hub000.xindong.com/core-system/server-register-go
 ```
 
 
@@ -31,14 +31,15 @@ import (
 /**
 	 测试注册服务
  */
+
 func main() {
+	register.LoadConfig()
+
+	register.SetDebug(true)
 
 	myReg := register.NewRegister()
-
-	regInterface := service.RegisterInterFace(myReg)
-	rpcService   := &register.RpcService{
-		service.NewSysService(regInterface), service.NewService(regInterface)}
-	register.LoadService(rpcService)
+	register.LoadService("", service.NewService(myReg))
+	register.LoadService("sys", service.NewSysService(myReg))
 
 	myReg.CreateClient()
 }

@@ -4,7 +4,7 @@ import (
 	"github.com/hprose/hprose-golang/rpc"
 )
 
-type MyRpc struct {
+type sMyRpc struct {
 	service  *rpc.TCPService			// rpc 服务
 	context *rpc.SocketContext			// 上下文
 }
@@ -19,16 +19,23 @@ func DoFunctionList() string {
 /**
 	初始化
  */
-func NewMyRpc() *MyRpc {
+func NewMyRpc() *sMyRpc {
 	service := rpc.NewTCPService()
 	context := new(rpc.SocketContext)
 	context.InitServiceContext(service)
-	return &MyRpc{service: service, context:context}
+	return &sMyRpc{service: service, context:context}
 }
 
 /**
 	执行结果
  */
-func (mrpc *MyRpc) handle(data []byte, context rpc.Context) []byte {
-	return mrpc.service.Handle(data, context)
+func (myRpc *sMyRpc) handle(data []byte, context rpc.Context) []byte {
+	return myRpc.service.Handle(data, context)
+}
+
+/**
+	注册方法
+ */
+func (myRpc *sMyRpc) AddFunction(name string, function interface{}, option ...rpc.Options) {
+	myRpc.service.AddFunction(name, function, option...)
 }

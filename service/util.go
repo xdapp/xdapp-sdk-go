@@ -59,7 +59,3 @@ func getHash(app string, name string, time string, rand string, key string) stri
 	str := fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key)
 	return Sha1(str)
 }
-
-func toStr(data interface{}) string {
-	return IntToStr(data)
-}

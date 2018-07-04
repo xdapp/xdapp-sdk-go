@@ -1,21 +1,21 @@
 package main
 
 import (
-	"hub000.xindong.com/core-system/server-register-go/register"
-	"hub000.xindong.com/core-system/server-register-go/service"
+	"server-register-go/register"
+	"server-register-go/service"
 )
 
 /**
 	 测试注册服务
  */
 func main() {
+	register.LoadConfig()
+
+	register.SetDebug(true)
 
 	myReg := register.NewRegister()
-
-	regInterface := service.RegisterInterFace(myReg)
-	rpcService   := &register.RpcService{
-		service.NewSysService(regInterface), service.NewService(regInterface)}
-	register.LoadService(rpcService)
+	register.LoadService("", service.NewService(myReg))
+	register.LoadService("sys", service.NewSysService(myReg))
 
 	myReg.CreateClient()
 }

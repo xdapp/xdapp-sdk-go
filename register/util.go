@@ -13,7 +13,6 @@ import (
 	"path"
 	"net/http"
 	"io/ioutil"
-	"log"
 	"bytes"
 	"mime/multipart"
 )
@@ -142,7 +141,7 @@ func FindAllFiles(dir string) []string {
 
 	pattern := strings.Replace(dir, "\\", "/", -1) + "/*"
 	files, _ := filepath.Glob(pattern)
-	fmt.Println("FindAllFiles: ", files) // contains a list of all files in the current directory
+	//MyLog.Info("FindAllFiles: ", files) // contains a list of all files in the current directory
 	return files
 }
 
@@ -157,7 +156,7 @@ func GetFileInfo(f string) (string, string) {
 /**
 	执行curl
  */
-func CurlRequest(reqUrl string, postStr string) string {
+func Request(reqUrl string, postStr string) string {
 	timeout := time.Duration(5 * time.Second)	//超时时间5s
 	client 	:= &http.Client{
 		Timeout: timeout,
@@ -165,20 +164,20 @@ func CurlRequest(reqUrl string, postStr string) string {
 
 	request, err := http.NewRequest("POST", reqUrl, strings.NewReader(postStr))
 	if err != nil {
-		log.Fatal(err)
+		MyLog.Error("执行curl 报错" + err.Error())
 	}
 
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Cookie", "")
 	response, err := client.Do(request)
 	if err != nil {
-		log.Fatal(err)
+		MyLog.Error("执行curl 报错" + err.Error())
 	}
 	defer response.Body.Close()
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatal(err)
+		MyLog.Error("执行curl 读取返回结果报错" + err.Error())
 	}
 
 	return string(body)
@@ -191,17 +190,16 @@ func PostFile(filename string, targetUrl string) error {
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 
-	//关键的一步操作
 	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
 	if err != nil {
-		fmt.Println("error writing to buffer")
+		MyLog.Error("执行上传文件  CreateFormFile" + filename + ", 报错" + err.Error())
 		return err
 	}
 
 	//打开文件句柄操作
 	fh, err := os.Open(filename)
 	if err != nil {
-		fmt.Println("error opening file")
+		MyLog.Error("执行上传文件 打开" + filename + ", 报错" + err.Error())
 		return err
 	}
 	defer fh.Close()
@@ -224,7 +222,6 @@ func PostFile(filename string, targetUrl string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(resp.Status)
-	fmt.Println(string(body))
+	MyLog.Debug("上传文件返回：status=" + resp.Status + ",结果" + string(body))
 	return nil
 }

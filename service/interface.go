@@ -4,7 +4,7 @@ package service
 	调用register接口
 	https://wangzhezhe.github.io/2017/02/06/import-cycle/ (互相调用)
  */
-type RegisterInterFace interface {
+type IRegister interface {
 	GetApp() string
 	GetName() string
 	GetKey() string
@@ -12,27 +12,39 @@ type RegisterInterFace interface {
 	SetServiceData(data map[string]map[string]string)
 	CloseClient()
 	ConsolePageSync()
+	Logger
 }
 
-type Service struct {
-	RegisterFace RegisterInterFace
+/**
+	logger
+ */
+type Logger interface {
+	Info(arg0 interface{}, args ...interface{})
+	Debug(arg0 interface{}, args ...interface{})
+	Warn(arg0 interface{}, args ...interface{})
+	Error(arg0 interface{}, args ...interface{})
+}
+
+
+type NormalService struct {
+	register IRegister
 }
 
 /**
 	rpc 工厂建立
  */
-func NewService(RegisterFace RegisterInterFace) *Service {
-	return &Service{RegisterFace: RegisterFace }
+func NewService(register IRegister) *NormalService {
+	return &NormalService{register: register }
 }
 
-func (service *Service) getApp() string {
-	return service.RegisterFace.GetApp()
+func (service *NormalService) getApp() string {
+	return service.register.GetApp()
 }
 
-func (service *Service) getName() string {
-	return service.RegisterFace.GetName()
+func (service *NormalService) getName() string {
+	return service.register.GetName()
 }
 
-func (service *Service) getKey() string {
-	return service.RegisterFace.GetKey()
+func (service *NormalService) getKey() string {
+	return service.register.GetKey()
 }

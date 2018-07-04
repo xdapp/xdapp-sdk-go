@@ -4,9 +4,9 @@ import (
 	"net"
 	"time"
 	"os"
-	"encoding/binary"
 	"bytes"
 	"bufio"
+	"encoding/binary"
 )
 
 type TcpEvent interface {
@@ -34,7 +34,7 @@ type tcpConfig struct {
 	packageMaxLength		int		// 最大的长度
 }
 
-const Default_Max_Len  = 0x200020
+const defaultMaxLen  = 0x200020
 
 /**
 	连接
@@ -70,7 +70,6 @@ func (cli *Client) OnError(callback func( err error)) {
 	cli.onErrorCallback = callback
 }
 
-
 /**
 	分割信息
  */
@@ -84,7 +83,7 @@ func (cli *Client) OnSplit(callback func(data []byte, atEOF bool) (advance int, 
 func (cli *Client) SendMessage(data []byte) {
 	_, err := cli.Conn.Write(data)
 	if err != nil {
-		Debug("发送失败" + err.Error())
+		MyLog.Debug("发送失败" + err.Error())
 	}
 }
 
@@ -95,7 +94,7 @@ func (cli *Client) Connect() {
 
 	cli.OnConnect()
 
-	Info("##############", cli.Conn)
+	defer cli.Close(true)
 
 	if cli.Conn == nil {
 		return
@@ -112,12 +111,10 @@ func (cli *Client) Connect() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		Error("scanner", err.Error())
+		MyLog.Error("scanner", err.Error())
 		//cli.onErrorCallback(err)
 		return
 	}
-
-	defer cli.Close(true)
 }
 
 /**
@@ -125,7 +122,7 @@ func (cli *Client) Connect() {
  */
 func (cli *Client) Close(regSuccess bool) {
 	cli.Conn.Close()
-	defer Debug("status", regSuccess)
+	defer MyLog.Debug("status", regSuccess)
 
 	if regSuccess {
 		cli.onCloseCallback()
@@ -135,7 +132,7 @@ func (cli *Client) Close(regSuccess bool) {
 /**
 	创建客户端
  */
-func NewClient(address string, config tcpConfig) *Client {
+func NewClient(address string, tcpConf tcpConfig) *Client {
 
 	cli := Client{}
 
@@ -146,24 +143,24 @@ func NewClient(address string, config tcpConfig) *Client {
 	}
 
 	cli.Addr = tcpAddr
-	cli.tcpConfig = config
+	cli.tcpConfig = tcpConf
 
 	cli.OnReceive(func(message []byte) {
-		data := make([]byte, Default_Max_Len)
+		data := make([]byte, defaultMaxLen)
 		n, _ := cli.Conn.Read(data)
-		Debug(data[:n])
+		MyLog.Debug(data[:n])
 	})
 
 	cli.OnClose(func() {
 		// 连接关闭 1秒后重连
-		Debug("RPC服务连接关闭，等待重新连接")
+		MyLog.Debug("RPC服务连接关闭，等待重新连接")
 		time.Sleep(1 * time.Second)
 		cli.Connect()
 	})
 
 	cli.OnError(func(err error) {
 		// 连接失败 1秒后重连
-		Debug("RPC服务连接错误，等待重新连接" + err.Error())
+		MyLog.Debug("RPC服务连接错误，等待重新连接" + err.Error())
 		time.Sleep(1 * time.Second)
 		cli.Connect()
 	})
@@ -193,4 +190,20 @@ func NewClient(address string, config tcpConfig) *Client {
 	})
 
 	return &cli
+}
+
+/**
+	发送结果返回
+ */
+func Send(cli *Client, flag byte, fd uint32, data string) {
+	response := &ResponseData{
+		Flag: flag,
+		Fd:   fd,
+		Data: []byte(data),
+	}
+	response.Len = uint32(len(data))
+
+	buf := new(bytes.Buffer)
+	response.Pack(buf)
+	cli.SendMessage(buf.Bytes())
 }

@@ -1,30 +1,9 @@
 package register
 
 import (
-	"io/ioutil"
-	"gopkg.in/yaml.v2"
 	"github.com/alecthomas/log4go"
-	"fmt"
-	"path/filepath"
-	"log"
-	"strings"
+	"bytes"
 )
-
-/**
-	配置
- */
-type Config struct {
-	Console console
-	Env string
-}
-
-type console struct {
-	Host 	string // 服务器域名和端口
-	SSl 	bool   // 是否SSL连接
-	App  	string
-	Name 	string
-	Key  	string
-}
 
 const (
 	defaultHostIsSSl   = true
@@ -33,38 +12,34 @@ const (
 	defaultHost        = "www.xdapp.com:8900"
 )
 
-/**
-	全局变量
- */
-var (
-	conf Config				// 配置
-	myRpc *MyRpc			// rpc 服务
-	MyLog *log4go.Logger	// log日志
-)
-var logFile = "test.log"
-
-/**
-	全局变量初始化
- */
-func init() {
-	conf  = getConf(configPath())			// 配置
-	MyLog = NewLog4go(conf.Env, logFile)	// 获取log对象
-	myRpc = NewMyRpc()						// rpc服务
-}
-
-type RegisterData struct {
+type SRegister struct {
 	console
-	MyClient    *Client
-	RegSuccess  bool
-	ServiceData (map[string]map[string]string)
+	Logger    *log4go.Logger					// 创建的tcp客户端对象
+	Client    *Client							// 创建的tcp客户端对象
+	RegSuccess  bool							// 注册成功标志
+	ServiceData (map[string]map[string]string)	// console 注册成功返回的页面服务器信息
 }
+
+var (
+	MyRpc   = NewMyRpc()
+	MyLog   *log4go.Logger 	// log日志
+)
+
+/**
+	tcp 配置
+ */
+var tcpConf = &tcpConfig {
+	1,				// 包长开始位
+	13,				// 1字节消息类型+4字节消息体长度+4字节用户id+4字节原消息fd+内容（id+data）
+	0x200000}			// 最大包长度
 
 /**
 	工厂创建
  */
-func NewRegister() *RegisterData {
+func NewRegister() *SRegister {
 
 	Console := conf.Console
+
 	if Console.Host == "" {
 		Console.Host = defaultHost
 	}
@@ -78,122 +53,131 @@ func NewRegister() *RegisterData {
 		Console.Name = defaultServiceName
 	}
 
-	client := NewClient(Console.Host, *config)
-	return &RegisterData{Console, client, false, make (map[string]map[string]string)}
+	MyLog = NewLog4go()
+	client := NewClient(Console.Host, *tcpConf)
+
+	return &SRegister{Console, MyLog,client, false, make (map[string]map[string]string)}
+}
+
+func (reg *SRegister) GetApp() string {
+	return reg.App
+}
+
+func (reg *SRegister) GetName() string {
+	return reg.Name
+}
+func (reg *SRegister) GetKey() string {
+	return reg.Key
+}
+
+func (reg *SRegister) SetRegSuccess(status bool) {
+	reg.RegSuccess = status
+}
+
+func (reg *SRegister) SetServiceData(data map[string]map[string]string) {
+	reg.ServiceData = data
+}
+
+func (reg *SRegister) CloseClient() {
+	reg.Client.Close(reg.RegSuccess)
+}
+
+func (reg *SRegister) Info(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Info(arg0, args ...)
+}
+
+func (reg *SRegister) Debug(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Debug(arg0, args ...)
+}
+
+func (reg *SRegister) Warn(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Warn(arg0, args ...)
+}
+
+func (reg *SRegister) Error(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Error(arg0, args ...)
+}
+
+/**
+	tcp client
+ */
+func (reg *SRegister) CreateClient() {
+
+	reg.Client.OnReceive(func(message []byte) {
+
+		request := new(ReqestData)
+		request.Unpack(bytes.NewReader(message))
+
+		//myRpc.context.BaseContext.Set("receiveParam")
+
+		// 执行rpc返回
+		rpcData := MyRpc.handle(request.Data, MyRpc.context)
+
+		rs := string(PackId(request.Id)) + string(rpcData)
+
+		dataLen := len(rs);
+		if dataLen < tcpConf.packageMaxLength {
+			Send(reg.Client, request.Flag | 4, request.Fd, string(rs))
+
+		} else {
+			for i := 0; i < dataLen; i += tcpConf.packageMaxLength {
+
+				chunkLength := Min(tcpConf.packageMaxLength, dataLen - i)
+				chunk := Substr(string(rs), i, chunkLength)
+
+				flag := request.Flag
+				if dataLen - i == chunkLength {
+					flag |= 4
+				}
+				Send(reg.Client, flag, request.Fd, chunk)
+			}
+		}
+	})
+
+	reg.Client.Connect()
 }
 
 /**
 	获取key
  */
-func (reg *RegisterData) getKey() string {
+func (reg *SRegister) getKey() string {
 	return reg.ServiceData["pageServer"]["key"]
 }
 
 /**
 	获取host
  */
-func (reg *RegisterData) getHost() string {
+func (reg *SRegister) getHost() string {
 	return reg.ServiceData["pageServer"]["host"]
-}
-
-/**
-	配置文件
- */
-func configPath() string {
-	return GetBaseDir()  + "/config.yml"
-}
-
-/**
-	获取配置
- */
-func getConf(path string) Config {
-
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Printf("yamlFile.Get err   #%v ", err)
-	}
-
-	conf := Config{}
-	err = yaml.Unmarshal(data, &conf)
-	if err != nil {
-		fmt.Printf("Unmarshal: %v", err)
-	}
-
-	return conf
-}
-
-/**
-	获取一个类型的路径
- */
-func GetPath(pathType string) []string {
-
-	var path []string
-	baseDir := GetBaseDir()
-
-	path = append(path, baseDir + "/" + pathType)							// 项目
-	path = append(path, baseDir + "/vendor/xdapp/game/" + pathType)			// 项目库
-	path = append(path, baseDir + "/vendor/xdapp/game-core/" + pathType)	// 核心核心库
-	return path
-}
-
-/**
-	获取当前目录
- */
-func GetBaseDir() string {
-	dir, err := filepath.Abs(filepath.Dir(""))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return strings.Replace(dir, "\\", "/", -1)
 }
 
 /**
 	log4go对象设置
  */
-func NewLog4go(env string, logFile string) *log4go.Logger {
-	log4 := make(log4go.Logger)
+func NewLog4go() *log4go.Logger {
 
-	if env == "dev" {	// 开发环境log
-		log4.AddFilter("stdout", log4go.DEBUG, log4go.NewConsoleLogWriter())
-		log4.AddFilter("file", log4go.INFO, log4go.NewFileLogWriter(logFile, false))
-	} else {			// 线上环境log
-		log4.AddFilter("stdout", log4go.DEBUG, log4go.NewConsoleLogWriter())
-		log4.AddFilter("file", log4go.DEBUG, log4go.NewFileLogWriter(logFile, false))
+	log4 := make(log4go.Logger)
+	cw := log4go.NewConsoleLogWriter()
+
+	// 非debug模式
+	if isDebug == false {
+		cw.SetFormat("[%T %D] [%L] %M")
 	}
+	log4.AddFilter("stdout", log4go.DEBUG, cw)
+	log4.AddFilter("file", log4go.ERROR, log4go.NewFileLogWriter(logName, false))
 	return &log4
 }
 
-func Debug(arg0 interface{}, args ...interface{}) {
-	MyLog.Debug(arg0, args ...)
+/**
+	设置debug状态
+ */
+func SetDebug(status bool) {
+	isDebug = status
 }
 
-func Info(arg0 interface{}, args ...interface{}) {
-	MyLog.Info(arg0, args ...)
-}
-
-func Error(arg0 interface{}, args ...interface{}) {
-	MyLog.Error(arg0, args ...)
-}
-
-func (reg *RegisterData) GetApp() string {
-	return reg.App
-}
-
-func (reg *RegisterData) GetName() string {
-	return reg.Name
-}
-func (reg *RegisterData) GetKey() string {
-	return reg.Key
-}
-
-func (reg *RegisterData) SetRegSuccess(status bool) {
-	reg.RegSuccess = status
-}
-
-func (reg *RegisterData) SetServiceData(data map[string]map[string]string) {
-	reg.ServiceData = data
-}
-
-func (reg *RegisterData) CloseClient() {
-	reg.MyClient.Close(reg.RegSuccess)
+/**
+	设置log日志文件路径
+ */
+func SetLogFile(file string) {
+	logName = file
 }

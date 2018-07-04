@@ -97,7 +97,7 @@ func (id *IdData) Pack(writer io.Writer) {
 func writeData(writer io.Writer, data interface{}) {
 	err := binary.Write(writer, binary.BigEndian, data)
 	if err != nil {
-		Error(err.Error());
+		MyLog.Error(err.Error());
 		return
 	}
 }
@@ -105,7 +105,7 @@ func writeData(writer io.Writer, data interface{}) {
 func readData(reader io.Reader, data interface{}) {
 	err := binary.Read(reader, binary.BigEndian, data)
 	if err != nil {
-		Error(err.Error());
+		MyLog.Error(err.Error());
 		return
 	}
 }

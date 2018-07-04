@@ -6,11 +6,11 @@ import (
 )
 
 type SysService struct {
-	Service
+	NormalService
 }
 
-func NewSysService(RegisterFace RegisterInterFace) *SysService {
-	return &SysService{Service{RegisterFace: RegisterFace }}
+func NewSysService(register IRegister) *SysService {
+	return &SysService{NormalService{register: register}}
 }
 
 /**
@@ -22,7 +22,7 @@ func (service *SysService) Reg(time int64, rand string, hash string) []interface
 	fun := strings.ToLower(GetFuncName())
 
 	// 验证hash
-	if Sha1(fmt.Sprintf("%s.%s.%s", toStr(time), rand, "xdapp.com")) != hash {
+	if Sha1(fmt.Sprintf("%s.%s.%s", IntToStr(time), rand, "xdapp.com")) != hash {
 		return []interface{} {fun, false};
 	}
 
@@ -35,11 +35,9 @@ func (service *SysService) Reg(time int64, rand string, hash string) []interface
 	key  := service.getKey()
 	name := service.getName()
 	time  = Time()
-	hash  = getHash(app, name, toStr(time), rand, key)
+	hash  = getHash(app, name, IntToStr(time), rand, key)
 
 	arr := map[string]interface{}{"app": app, "name": name , "time": time, "rand": rand, "hash": hash}
-
-	fmt.Println("doing reg")
 
 	return []interface{} {fun, arr}
 }
@@ -55,10 +53,8 @@ func (service *SysService) Menu() {
 	注册失败
  */
 func (service *SysService) RegErr(msg string, data interface{}) {
-	fmt.Println("RegErr")
-	service.RegisterFace.SetRegSuccess(false)
-	fmt.Println("error")
-	fmt.Println(msg, data)
+	service.register.SetRegSuccess(false)
+	service.register.Debug("注册失败", msg, data)
 }
 
 /**
@@ -70,22 +66,20 @@ func (service *SysService) RegOk(data map[string]map[string]string, time int, ra
 	key  := service.getKey()
 	name := service.getName()
 
-	timeStr := toStr(time)
-
-
-	if getHash(app, name, timeStr, rand, key) != hash {
-		service.RegisterFace.SetRegSuccess(false)
-		service.RegisterFace.CloseClient()
+	if getHash(app, name, IntToStr(time), rand, key) != hash {
+		service.register.SetRegSuccess(false)
+		service.register.CloseClient()
 		return
 	}
 
 	// 注册成功
-	service.RegisterFace.SetRegSuccess(true)
-	service.RegisterFace.SetServiceData(data)
-	fmt.Println("RPC服务注册成功，服务名:" + app + "-> " + name)
+	service.register.SetRegSuccess(true)
+	service.register.SetServiceData(data)
+
+	service.register.Debug("RPC服务注册成功，服务名:" + app + "-> " + name)
 
 	// 同步页面
-	service.RegisterFace.ConsolePageSync()
+	service.register.ConsolePageSync()
 }
 
 /**
