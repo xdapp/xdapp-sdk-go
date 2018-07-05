@@ -13,10 +13,7 @@ type RespFields struct {
 	List    [][]string			// 列表
 }
 
-/**
-	前端页面目录
- */
-var consolePath = defaultConsolePath()
+var consolePath = defaultConsolePath() // 前端页面目录
 
 /**
 	同步Console页面文件
@@ -29,9 +26,9 @@ func (reg *SRegister) ConsolePageSync() {
 	change 	:= list[0]
 	remove 	:= list[1]
 
-	MyLog.Debug("待修改文件列表", change)
-	MyLog.Debug("待删除文件列表", remove)
-	MyLog.Debug("console 目录", consolePath)
+	MyLog.Debug("待修改文件列表:" + JsonEncode(change))
+	MyLog.Debug("待删除文件列表:" + JsonEncode(remove))
+	MyLog.Debug("设置的console 目录: " + JsonEncode(consolePath))
 
 	reg.getUpdateFile(change, consolePath)
 
@@ -56,17 +53,18 @@ func (reg *SRegister) checkConsolePageDiff() [][]string  {
 	listStr := JsonEncode(list)
 	sign 	:= Md5(fmt.Sprintf("%s.%s.%s", IntToStr(Time()), listStr, key))
 
-	MyLog.Info("console view", listStr)
-	MyLog.Debug("reg.ServiceData", reg.ServiceData)
+	MyLog.Info("获取console前端文件: " + listStr)
+	MyLog.Debug("获取ServiceData: " + JsonEncode(reg.ServiceData))
 
 	host 	:= reg.ServiceData["pageServer"]["host"]
 	reqUrl 	:= fmt.Sprintf("%scheck/%s/%s?time=%s&sign=%s", host, reg.App, reg.Name, IntToStr(Time()), sign)
 
-	MyLog.Debug("请求的同步地址", reqUrl)
-
 	rs := Request(reqUrl, "list=" + listStr)
 	resp := RespFields{}
 	JsonDecode(rs, &resp)
+
+	MyLog.Debug("请求同步地址：" + reqUrl)
+	MyLog.Debug("请求返回结果：" + rs)
 
 	if  resp.Status == "" {
 		MyLog.Error("RPC服务同步page文件获取列表信息解析json失败: " + rs)
@@ -75,7 +73,6 @@ func (reg *SRegister) checkConsolePageDiff() [][]string  {
 	if resp.Status != "ok" {
 		MyLog.Error("RPC服务同步page文件获取列表返回: " + rs)
 	}
-	MyLog.Debug("curl request", resp)
 
 	return resp.List
 }
@@ -150,7 +147,7 @@ func (reg *SRegister) deleteConsolePage(file string) {
 		MyLog.Error("RPC服务删除文件" + file  + "接口返回" + rs)
 	}
 
-	MyLog.Debug("删除文件结果返回：", rs)
+	MyLog.Debug("删除文件结果返回：" +  rs)
 }
 
 

@@ -27,46 +27,28 @@ type console struct {
 }
 
 /**
-	console 默认配置
- */
-var defaultConsole = console{
-	"www.xdapp.com:8900",true,"test","console","",}
-
-var (
-	baseDir  = defaultBaseDir()
-	confPath = defaultConfPath()
-	conf     = configuration{defaultConsole} // 默认配置
-)
-
-/**
 	设置配置
  */
-func LoadConfig() configuration {
+func LoadConfig(filePath string) configuration {
 
-	if !PathExist(confPath) {
-		MyLog.Error("配置文件：" + confPath + "不存在！")
+	if !PathExist(filePath) {
+		MyLog.Error("配置文件：" + filePath + "不存在！")
 	}
 
-	data, err := ioutil.ReadFile(confPath)
+	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		MyLog.Error("读取配置文件错误 " + err.Error())
 	}
 
 	// 赋初始值
-	conf := configuration{defaultConsole}
+	conf := configuration{
+		console{DefaultHost, DefaultSSl, DefaultApp, DefaultName, DefaultKey}}
 
 	err = yaml.Unmarshal(data, &conf)
 	if err != nil {
 		MyLog.Error("解析配置文件错误", err.Error())
 	}
 	return conf
-}
-
-/**
-	设置基础目录
- */
-func SetBaseDir(dir string) {
-	baseDir = dir
 }
 
 /**
@@ -81,25 +63,18 @@ func defaultBaseDir() string {
 }
 
 /**
-	默认配置文件
- */
-func defaultConfPath() string {
-	return baseDir + "/config.yml"
-}
-
-/**
-	默认目录
+	默认前端目录
  */
 func defaultConsolePath() []string {
 	var path []string
-	path = append(path, baseDir + "/console/")	// 项目
+	path = append(path, defaultBaseDir() + "/console/")
 	return path
 }
 
 /**
-	set
+	增加前端目录
  */
-func SetConsolePath(path []string) {
+func addConsolePath(path []string) {
 	for _, p := range path {
 		consolePath = append(consolePath, p)
 	}

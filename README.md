@@ -33,15 +33,20 @@ import (
  */
 
 func main() {
-	register.LoadConfig()
+	myReg := register.NewRegister(register.RegConfig{
+    		IsDebug: false,
+    })
 
-	register.SetDebug(true)
+    // 加载rpc 方法
+    register.LoadService("", service.NewService(myReg))
+    register.LoadService("sys", service.NewSysService(myReg))
 
-	myReg := register.NewRegister()
-	register.LoadService("", service.NewService(myReg))
-	register.LoadService("sys", service.NewSysService(myReg))
+    // 增加单个方法
+    register.MyRpc.AddFunction("test", func() string {
+        return "just test"
+    })
 
-	myReg.CreateClient()
+    myReg.CreateClient()
 }
 
 ```

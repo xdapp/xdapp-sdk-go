@@ -13,24 +13,53 @@ type SRegister struct {
 	ServiceData (map[string]map[string]string) // console 注册成功返回的页面服务器信息
 }
 
+/**
+	可配置参数
+ */
+type RegConfig struct {
+	IsDebug 	bool		`是否debug模式`
+	LogName 	string		`log文件名`
+	ConfigPath 	string		`配置文件路径`
+	ConsolePath []string	`console前端文件目录`
+}
+
+const (
+	DefaultHost    = "www.xdapp.com:8900"
+	DefaultSSl     = true
+	DefaultApp     = "test"
+	DefaultName    = "console"
+	DefaultKey     = ""
+	DefaultLogName = "test.log"
+)
+
 var (
-	MyLog   *log4go.Logger	// log日志
-	MyRpc   *sMyRpc
-	isDebug = false			// 是否debug模式
-	logName = "test.log"
+	MyLog *log4go.Logger // log 日志
+	MyRpc *sMyRpc		 // rpc 服务
 )
 
 /**
 	工厂创建
  */
-func NewRegister() *SRegister {
+func NewRegister(rfg RegConfig) *SRegister {
+
+
+	if rfg.LogName == "" {
+		rfg.LogName = DefaultLogName
+	}
+
+	if rfg.ConfigPath == "" {
+		rfg.ConfigPath = defaultBaseDir() + "/config.yml"
+	}
+
+	if rfg.ConsolePath != nil {
+		addConsolePath(rfg.ConsolePath)
+	}
 
 	MyRpc  = NewMyRpc()
-	MyLog  = NewLog4go()
-	conf   = LoadConfig()
+	MyLog  = NewLog4go(rfg.IsDebug, rfg.LogName)
 
-	host   := conf.Console.Host
-	client := NewClient(host, *tcpConf)
+	conf   := LoadConfig(rfg.ConfigPath)
+	client := NewClient(conf.Console.Host, *tcpConf)
 
 	return &SRegister{
 		conf.Console,
@@ -84,6 +113,8 @@ func (reg *SRegister) Error(arg0 interface{}, args ...interface{}) {
  */
 func (reg *SRegister) CreateClient() {
 
+	debugSuccessService()
+
 	reg.Client.OnReceive(func(message []byte) {
 
 		request := new(ReqestData)
@@ -96,7 +127,8 @@ func (reg *SRegister) CreateClient() {
 
 		rs := string(PackId(request.Id)) + string(rpcData)
 
-		dataLen := len(rs);
+		dataLen := len(rs)
+
 		if dataLen < tcpConf.packageMaxLength {
 			Send(reg.Client, request.Flag | 4, request.Fd, string(rs))
 
@@ -135,7 +167,7 @@ func (reg *SRegister) getHost() string {
 /**
 	log4go对象设置
  */
-func NewLog4go() *log4go.Logger {
+func NewLog4go(isDebug bool, logName string) *log4go.Logger {
 
 	log4 := make(log4go.Logger)
 	cw := log4go.NewConsoleLogWriter()
@@ -147,18 +179,4 @@ func NewLog4go() *log4go.Logger {
 	log4.AddFilter("stdout", log4go.DEBUG, cw)
 	log4.AddFilter("file", log4go.ERROR, log4go.NewFileLogWriter(logName, false))
 	return &log4
-}
-
-/**
-	设置debug状态
- */
-func SetDebug(status bool) {
-	isDebug = status
-}
-
-/**
-	设置log日志文件路径
- */
-func SetLogName(name string) {
-	logName = name
 }

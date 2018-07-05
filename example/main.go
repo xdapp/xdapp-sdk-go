@@ -10,10 +10,18 @@ import (
  */
 func main() {
 
-	register.SetDebug(true)
-	myReg := register.NewRegister()
+	myReg := register.NewRegister(register.RegConfig{
+		IsDebug: false,
+	})
+
+	// 加载rpc 方法
 	register.LoadService("", service.NewService(myReg))
 	register.LoadService("sys", service.NewSysService(myReg))
+
+	// 增加单个方法
+	register.MyRpc.AddFunction("test", func() string {
+		return "just test"
+	})
 
 	myReg.CreateClient()
 }

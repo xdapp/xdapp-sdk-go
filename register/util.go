@@ -41,6 +41,16 @@ func JsonDecode(str string, fields interface{}) {
 		fmt.Println(err.Error())
 	}
 }
+/**
+
+ */
+func Implode(split string, array map[string]string) string {
+	var str string
+	for _, v := range array {
+		str += v + split
+	}
+	return strings.Trim(str, split)
+}
 
 /**
 	文件md5
