@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"os"
 )
 
 /**
@@ -54,7 +55,7 @@ func LoadConfig(filePath string) configuration {
 /**
 	默认基础目录
  */
-func defaultBaseDir() string {
+func DefaultBaseDir() string {
 	dir, err := filepath.Abs(filepath.Dir(""))
 	if err != nil {
 		log.Fatal(err)
@@ -65,19 +66,25 @@ func defaultBaseDir() string {
 /**
 	默认前端目录
  */
-func defaultConsolePath() []string {
-	var path []string
-	path = append(path, defaultBaseDir() + "/console/")
-	return path
+func defaultConsolePath() string {
+	return DefaultBaseDir() + "/console/"
 }
 
 /**
-	追加前端目录
+	校验前端目录
  */
-func addConsolePath(srcPath []string, path []string) []string {
-
+func checkConsolePath(path []string) []string {
+	var descPath[]string
 	for _, p := range path {
-		srcPath = append(srcPath, p)
+		if !IsExist(p) {
+			continue
+		}
+		descPath = append(descPath, p)
 	}
-	return srcPath
+	return descPath
+}
+
+func IsExist(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil || os.IsExist(err)
 }

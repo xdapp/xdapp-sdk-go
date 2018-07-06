@@ -46,13 +46,14 @@ func NewRegister(rfg RegConfig) *SRegister {
 		rfg.LogName = defaultLogName
 	}
 
-	if rfg.ConfigPath == "" {
-		rfg.ConfigPath = defaultBaseDir() + "/config.yml"
+	if rfg.ConfigPath == "" || !IsExist(rfg.ConfigPath) {
+		rfg.ConfigPath = DefaultBaseDir() + "/config.yml"
 	}
 
-	consolePath = defaultConsolePath()
 	if rfg.ConsolePath != nil {
-		consolePath = addConsolePath(consolePath, rfg.ConsolePath)
+		consolePath = checkConsolePath(rfg.ConsolePath)
+	} else {
+		consolePath = append(consolePath, defaultConsolePath())
 	}
 
 	MyRpc  = NewMyRpc()

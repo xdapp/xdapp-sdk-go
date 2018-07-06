@@ -55,7 +55,7 @@ func (myRpc *sMyRpc) AddFunction(name string, function interface{}, option ...rp
 }
 
 /**
-	根据service 加载可执行的所有func
+	加载service 作为receiver的可执行的所有方法
   */
 func LoadService(prefix string, service interface{}) {
 

@@ -144,7 +144,8 @@ func NewClient(address string, tcpConf tcpConfig) *Client {
 
 	cli := Client{}
 	tcpAddr, err := net.ResolveTCPAddr("tcp", address)
-	MyLog.Debug("连接ip地址：" + address)
+
+	MyLog.Debug("tcp连接ip地址：" + address)
 
 	if err != nil {
 		println("ResolveTCPAddr failed:", err.Error())

@@ -26,7 +26,7 @@ var vueFileList []string
 	同步Console页面文件
  */
 func (reg *SRegister) ConsolePageSync() {
-	MyLog.Debug("同步Console页面文件 ")
+	MyLog.Debug("前端文件目录：" + JsonEncode(consolePath))
 
 	list 	:= reg.checkConsolePageDiff()
 	change 	:= list[0]
