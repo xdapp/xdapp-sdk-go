@@ -30,6 +30,10 @@
   name = "github.com/alecthomas/log4go"
 
 [[constraint]]
+  name = "github.com/ddliu/go-httpclient"
+  version = "0.5.1"
+
+[[constraint]]
   name = "github.com/hprose/hprose-golang"
   version = "2.0.4"
 

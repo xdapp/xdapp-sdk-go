@@ -2,7 +2,6 @@ package register
 
 import (
 	"github.com/alecthomas/log4go"
-	"bytes"
 )
 
 type SRegister struct {
@@ -24,17 +23,18 @@ type RegConfig struct {
 }
 
 const (
-	DefaultHost    = "www.xdapp.com:8900"
-	DefaultSSl     = true
-	DefaultApp     = "test"
-	DefaultName    = "console"
-	DefaultKey     = ""
-	DefaultLogName = "test.log"
+	defaultHost    = "www.xdapp.com:8900"
+	defaultSSl     = true
+	defaultApp     = "test"
+	defaultName    = "console"
+	defaultKey     = ""
+	defaultLogName = "test.log"
 )
 
 var (
-	MyLog *log4go.Logger // log 日志
-	MyRpc *sMyRpc		 // rpc 服务
+	MyLog *log4go.Logger 	// log 日志
+	MyRpc *sMyRpc		 	// rpc 服务
+	consolePath []string	// 前端页面目录
 )
 
 /**
@@ -42,24 +42,24 @@ var (
  */
 func NewRegister(rfg RegConfig) *SRegister {
 
-
 	if rfg.LogName == "" {
-		rfg.LogName = DefaultLogName
+		rfg.LogName = defaultLogName
 	}
 
 	if rfg.ConfigPath == "" {
 		rfg.ConfigPath = defaultBaseDir() + "/config.yml"
 	}
 
+	consolePath = defaultConsolePath()
 	if rfg.ConsolePath != nil {
-		addConsolePath(rfg.ConsolePath)
+		consolePath = addConsolePath(consolePath, rfg.ConsolePath)
 	}
 
 	MyRpc  = NewMyRpc()
 	MyLog  = NewLog4go(rfg.IsDebug, rfg.LogName)
 
 	conf   := LoadConfig(rfg.ConfigPath)
-	client := NewClient(conf.Console.Host, *tcpConf)
+	client := NewClient(conf.Console.Host, tcpConf)
 
 	return &SRegister{
 		conf.Console,
@@ -117,22 +117,23 @@ func (reg *SRegister) CreateClient() {
 
 	reg.Client.OnReceive(func(message []byte) {
 
-		request := new(ReqestData)
-		request.Unpack(bytes.NewReader(message))
-
-		//myRpc.context.BaseContext.Set("receiveParam")
+		request := new(RequestData)
+		request.Unpack(message)
 
 		// 执行rpc返回
+		//myRpc.context.BaseContext.Set("receiveParam")
 		rpcData := MyRpc.handle(request.Data, MyRpc.context)
 
-		rs := string(PackId(request.Id)) + string(rpcData)
-
+		packId := string(PackId(request.Id))
+		rs := packId + string(rpcData)
 		dataLen := len(rs)
 
+		// 小于最大包长度 直接发送
 		if dataLen < tcpConf.packageMaxLength {
 			Send(reg.Client, request.Flag | 4, request.Fd, string(rs))
-
 		} else {
+
+			// 大于 拆包分段发送
 			for i := 0; i < dataLen; i += tcpConf.packageMaxLength {
 
 				chunkLength := Min(tcpConf.packageMaxLength, dataLen - i)
@@ -178,5 +179,6 @@ func NewLog4go(isDebug bool, logName string) *log4go.Logger {
 	}
 	log4.AddFilter("stdout", log4go.DEBUG, cw)
 	log4.AddFilter("file", log4go.ERROR, log4go.NewFileLogWriter(logName, false))
+
 	return &log4
 }

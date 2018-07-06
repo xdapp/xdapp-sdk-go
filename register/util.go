@@ -1,7 +1,6 @@
 package register
 
 import (
-	"path/filepath"
 	"strings"
 	"encoding/json"
 	"fmt"
@@ -10,11 +9,6 @@ import (
 	"io"
 	"time"
 	"strconv"
-	"path"
-	"net/http"
-	"io/ioutil"
-	"bytes"
-	"mime/multipart"
 )
 
 /**
@@ -142,96 +136,4 @@ func Substr(s string, pos int, length int) string {
 		l = len(runes)
 	}
 	return string(runes[pos:l])
-}
-
-/**
-	获取当前文件夹下全部文件
- */
-func FindAllFiles(dir string) []string {
-
-	pattern := strings.Replace(dir, "\\", "/", -1) + "/*"
-	files, _ := filepath.Glob(pattern)
-	//MyLog.Info("FindAllFiles: ", files) // contains a list of all files in the current directory
-	return files
-}
-
-/**
-	获取文件信息  文件名+后缀、后缀
- */
-func GetFileInfo(f string) (string, string) {
-	return path.Base(f), path.Ext(f)
-}
-
-
-/**
-	执行curl
- */
-func Request(reqUrl string, postStr string) string {
-	timeout := time.Duration(5 * time.Second)	//超时时间5s
-	client 	:= &http.Client{
-		Timeout: timeout,
-	}
-
-	request, err := http.NewRequest("POST", reqUrl, strings.NewReader(postStr))
-	if err != nil {
-		MyLog.Error("执行curl 报错" + err.Error())
-	}
-
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Cookie", "")
-	response, err := client.Do(request)
-	if err != nil {
-		MyLog.Error("执行curl 报错" + err.Error())
-	}
-	defer response.Body.Close()
-
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		MyLog.Error("执行curl 读取返回结果报错" + err.Error())
-	}
-
-	return string(body)
-}
-
-/**
-	上传文件
- */
-func PostFile(filename string, targetUrl string) error {
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-
-	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
-	if err != nil {
-		MyLog.Error("执行上传文件  CreateFormFile" + filename + ", 报错" + err.Error())
-		return err
-	}
-
-	//打开文件句柄操作
-	fh, err := os.Open(filename)
-	if err != nil {
-		MyLog.Error("执行上传文件 打开" + filename + ", 报错" + err.Error())
-		return err
-	}
-	defer fh.Close()
-
-	//iocopy
-	_, err = io.Copy(fileWriter, fh)
-	if err != nil {
-		return err
-	}
-
-	contentType := bodyWriter.FormDataContentType()
-	bodyWriter.Close()
-
-	resp, err := http.Post(targetUrl, contentType, bodyBuf)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	MyLog.Debug("上传文件返回：status=" + resp.Status + ",结果" + string(body))
-	return nil
 }

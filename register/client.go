@@ -39,7 +39,7 @@ const defaultMaxLen  = 0x200020
 /**
 	tcp 配置
  */
-var tcpConf = &tcpConfig {
+var tcpConf = tcpConfig {
 	1,				// 包长开始位
 	13,				// 1字节消息类型+4字节消息体长度+4字节用户id+4字节原消息fd+内容（id+data）
 	0x200000}			// 最大包长度
@@ -207,12 +207,9 @@ func NewClient(address string, tcpConf tcpConfig) *Client {
 func Send(cli *Client, flag byte, fd uint32, data string) {
 	response := &ResponseData{
 		Flag: flag,
+		Len: uint32(len(data)),
 		Fd:   fd,
 		Data: []byte(data),
 	}
-	response.Len = uint32(len(data))
-
-	buf := new(bytes.Buffer)
-	response.Pack(buf)
-	cli.SendMessage(buf.Bytes())
+	cli.SendMessage(response.Pack())
 }

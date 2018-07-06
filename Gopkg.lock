@@ -8,6 +8,12 @@
   revision = "d146e6b86faab5f7e4d135cc63b749d74bf0d4a6"
 
 [[projects]]
+  name = "github.com/ddliu/go-httpclient"
+  packages = ["."]
+  revision = "72917d81d0423a6235790470d15a4d099e3490f9"
+  version = "v0.5.1"
+
+[[projects]]
   name = "github.com/hprose/hprose-golang"
   packages = [
     "io",
@@ -26,6 +32,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "805b0335288744713b0b050f0c93a9016e1ba241e7fbb2d1d6aeadee5ff2d372"
+  inputs-digest = "4a7105890cdb7bb365f51f6e2c3f18dee8167a723928d98ceb8d9a3cac482657"
   solver-name = "gps-cdcl"
   solver-version = 1

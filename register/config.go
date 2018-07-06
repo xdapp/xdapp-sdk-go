@@ -42,7 +42,7 @@ func LoadConfig(filePath string) configuration {
 
 	// 赋初始值
 	conf := configuration{
-		console{DefaultHost, DefaultSSl, DefaultApp, DefaultName, DefaultKey}}
+		console{defaultHost, defaultSSl, defaultApp, defaultName, defaultKey}}
 
 	err = yaml.Unmarshal(data, &conf)
 	if err != nil {
@@ -72,10 +72,12 @@ func defaultConsolePath() []string {
 }
 
 /**
-	增加前端目录
+	追加前端目录
  */
-func addConsolePath(path []string) {
+func addConsolePath(srcPath []string, path []string) []string {
+
 	for _, p := range path {
-		consolePath = append(consolePath, p)
+		srcPath = append(srcPath, p)
 	}
+	return srcPath
 }
