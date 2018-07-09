@@ -163,14 +163,14 @@ func NewClient(address string, tcpConf tcpConfig) *Client {
 
 	cli.OnClose(func() {
 		// 连接关闭 1秒后重连
-		MyLog.Debug("RPC服务连接关闭，等待重新连接")
+		MyLog.Error("RPC服务连接关闭，等待重新连接")
 		time.Sleep(1 * time.Second)
 		cli.Connect()
 	})
 
 	cli.OnError(func(err error) {
 		// 连接失败 1秒后重连
-		MyLog.Debug("RPC服务连接错误，等待重新连接" + err.Error())
+		MyLog.Error("RPC服务连接错误，等待重新连接" + err.Error())
 		time.Sleep(1 * time.Second)
 		cli.Connect()
 	})

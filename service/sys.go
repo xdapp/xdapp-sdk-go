@@ -3,14 +3,53 @@ package service
 import (
 	"fmt"
 	"strings"
+	"runtime"
+	"path/filepath"
+	"crypto/sha1"
+	"encoding/hex"
+	"time"
+	"strconv"
 )
 
+type IRegister interface {
+	GetApp() string
+	GetName() string
+	GetKey() string
+	SetRegSuccess(status bool)
+	SetServiceData(data map[string]map[string]string)
+	CloseClient()
+	ConsolePageSync()
+	ILogger
+}
+
+/**
+	logger
+ */
+type ILogger interface {
+	Info(arg0 interface{}, args ...interface{})
+	Debug(arg0 interface{}, args ...interface{})
+	Warn(arg0 interface{}, args ...interface{})
+	Error(arg0 interface{}, args ...interface{})
+}
+
 type SysService struct {
-	NormalService
+	register IRegister
 }
 
 func NewSysService(register IRegister) *SysService {
-	return &SysService{NormalService{register: register}}
+	return &SysService{register: register}
+}
+
+func (service *SysService) getApp() string {
+	return service.register.GetApp()
+}
+
+func (service *SysService) getName() string {
+	return service.register.GetName()
+}
+
+func (service *SysService) getKey() string {
+	return service.register.GetKey()
 }
 
 /**
@@ -37,9 +76,7 @@ func (service *SysService) Reg(time int64, rand string, hash string) []interface
 	time  = Time()
 	hash  = getHash(app, name, IntToStr(time), rand, key)
 
-	arr := map[string]interface{}{"app": app, "name": name , "time": time, "rand": rand, "hash": hash}
-
-	return []interface{} {fun, arr}
+	return []interface{} {fun, map[string]interface{}{"app": app, "name": name , "time": time, "rand": rand, "hash": hash}}
 }
 
 /**
@@ -54,7 +91,7 @@ func (service *SysService) Menu() {
  */
 func (service *SysService) RegErr(msg string, data interface{}) {
 	service.register.SetRegSuccess(false)
-	service.register.Debug("注册失败", msg, data)
+	service.register.Error("注册失败", msg, data)
 }
 
 /**
@@ -87,4 +124,52 @@ func (service *SysService) RegOk(data map[string]map[string]string, time int, ra
  */
 func (service *SysService) Test(str string) {
 	fmt.Println(str)
+}
+
+/**
+	获取函数名
+ */
+func GetFuncName() string {
+	pc, _, _, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	funcName = filepath.Ext(funcName)
+	funcName = strings.TrimPrefix(funcName, ".")
+	return funcName;
+}
+
+
+/**
+	获取sha1加密
+  */
+func Sha1(str string) string {
+	getHash := sha1.New()
+	getHash.Write([]byte(str))
+	r := getHash.Sum(nil)
+	return hex.EncodeToString(r[:])
+}
+
+/**
+	当前时间
+ */
+func Time() int64 {
+	return time.Now().Unix()
+}
+
+func IntToStr(data interface{}) string {
+
+	switch value := data.(type) {
+	case int:
+		return strconv.Itoa(value) // int to str
+	case int64:
+		return strconv.FormatInt(value, 10) // int64 转str
+	default:
+		return ""
+	}
+}
+
+/**
+	hash 值
+ */
+func getHash(app string, name string, time string, rand string, key string) string {
+	return Sha1(fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key))
 }

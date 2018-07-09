@@ -18,25 +18,12 @@ func main() {
 	register.LoadService("sys", service.NewSysService(myReg))
 
 	// 增加扩展类
-	register.LoadService("test", NewTest("test service"))
+	register.LoadService("test", service.NewTestService("test service"))
 
 	// 增加单个方法
-	register.MyRpc.AddFunction("test", func() string {
-		return "just test"
+	register.MyRpc.AddFunction("hello", func() string {
+		return "hello world"
 	})
 
 	myReg.CreateClient()
-}
-
-/**
-	测试增加扩展类
- */
-type TestService struct {
-	name string
-}
-func NewTest(name string) *TestService{
-	return &TestService{name}
-}
-func (service *TestService) Say() string {
-	return service.name
 }

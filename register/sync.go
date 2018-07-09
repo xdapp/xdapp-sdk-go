@@ -18,6 +18,11 @@ type RespFields struct {
 }
 
 /**
+	超时
+ */
+const timeOut = 5
+
+/**
 	console页面文件列表
  */
 var vueFileList []string
@@ -62,7 +67,7 @@ func (reg *SRegister) checkConsolePageDiff() [][]string  {
 	MyLog.Info("获取console前端文件: " + list)
 	MyLog.Debug("获取ServiceData: " + JsonEncode(reg.ServiceData))
 
-	response, err := httpclient.Post(url, map[string]string{
+	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Post(url, map[string]string{
 		"list": list,
 	})
 	if err != nil {
@@ -118,7 +123,8 @@ func (reg *SRegister) updateConsolePage (file string, fullPath string) {
 		fmt.Print(err)
 	}
 
-	response, err := httpclient.Put(url, strings.NewReader(string(b)))
+	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Put(url, strings.NewReader(string(b)))
+
 	if err != nil {
 		MyLog.Error("curl执行错误" + err.Error())
 	}
@@ -143,7 +149,7 @@ func (reg *SRegister) deleteConsolePage(file string) {
 	sign := Md5(fmt.Sprintf("%s.%s.%s", time, file, key))
 	url  := fmt.Sprintf("%srm/%s/%s/%s?time=%s&sign=%s", host, app, name, file, time, sign)
 
-	response, err := httpclient.Get(url, map[string]string{})
+	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Get(url, map[string]string{})
 	if err != nil {
 		MyLog.Error("curl执行错误" + err.Error())
 	}
