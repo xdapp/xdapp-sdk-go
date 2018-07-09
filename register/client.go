@@ -3,10 +3,10 @@ package register
 import (
 	"net"
 	"time"
-	"os"
 	"bytes"
 	"bufio"
 	"encoding/binary"
+	"log"
 )
 
 type TcpEvent interface {
@@ -148,8 +148,7 @@ func NewClient(address string, tcpConf tcpConfig) *Client {
 	MyLog.Debug("tcp连接ip地址：" + address)
 
 	if err != nil {
-		println("ResolveTCPAddr failed:", err.Error())
-		os.Exit(1)
+		log.Fatal("ResolveTCPAddr failed:", err.Error())
 	}
 
 	cli.Addr = tcpAddr

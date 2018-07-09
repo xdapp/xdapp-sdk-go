@@ -24,7 +24,7 @@ func DoFunctionList() string {
 }
 
 /**
-	初始化
+	rpc初始化
  */
 func NewMyRpc() *sMyRpc {
 	service := rpc.NewTCPService()
@@ -67,7 +67,7 @@ func LoadService(prefix string, service interface{}) {
 		mv := v.MethodByName(m.Name) 	//获取对应的方法
 
 		if !mv.IsValid() {            	//判断方法是否存在
-			MyLog.Error(m.Name + "方法不存在！")
+			MyLog.Warn(m.Name + "方法不存在！")
 			continue
 		}
 

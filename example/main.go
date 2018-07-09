@@ -10,9 +10,13 @@ import (
  */
 func main() {
 
-	myReg := register.NewRegister(register.RegConfig{
+	myReg, err := register.New(register.RegConfig{
 		IsDebug: false,
 	})
+
+	if err != nil {
+		panic(err.Error())
+	}
 
 	// 加载rpc 方法
 	register.LoadService("sys", service.NewSysService(myReg))

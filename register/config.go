@@ -7,6 +7,7 @@ import (
 	"log"
 	"strings"
 	"os"
+	"fmt"
 )
 
 /**
@@ -30,15 +31,15 @@ type console struct {
 /**
 	设置配置
  */
-func LoadConfig(filePath string) configuration {
+func LoadConfig(filePath string) (configuration, error) {
 
 	if !PathExist(filePath) {
-		MyLog.Error("配置文件：" + filePath + "不存在！")
+		return configuration{}, fmt.Errorf("配置文件:%s 不存在", filePath)
 	}
 
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		MyLog.Error("读取配置文件错误 " + err.Error())
+		return configuration{}, fmt.Errorf("读取配置文件错误:%s", err.Error())
 	}
 
 	// 赋初始值
@@ -47,9 +48,9 @@ func LoadConfig(filePath string) configuration {
 
 	err = yaml.Unmarshal(data, &conf)
 	if err != nil {
-		MyLog.Error("解析配置文件错误", err.Error())
+		return configuration{}, fmt.Errorf("解析配置文件错误:%s", err.Error())
 	}
-	return conf
+	return conf, nil
 }
 
 /**

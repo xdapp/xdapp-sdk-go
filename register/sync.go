@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"github.com/ddliu/go-httpclient"
+	"log"
 )
 
 /**
@@ -22,6 +23,11 @@ type RespFields struct {
  */
 const timeOut = 5
 
+var (
+	updateChan = make(chan RespFields, 5)
+	removeChan = make(chan RespFields, 5)
+)
+
 /**
 	console页面文件列表
  */
@@ -31,20 +37,52 @@ var vueFileList []string
 	同步Console页面文件
  */
 func (reg *SRegister) ConsolePageSync() {
+
 	MyLog.Debug("前端文件目录：" + JsonEncode(consolePath))
+
+	defer func(){
+		if err := recover(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	list 	:= reg.checkConsolePageDiff()
 	change 	:= list[0]
 	remove 	:= list[1]
 
-	MyLog.Debug("设置的console 目录: " + JsonEncode(consolePath))
 	MyLog.Debug("待修改文件列表:" + JsonEncode(change))
 	MyLog.Debug("待删除文件列表:" + JsonEncode(remove))
 
-	reg.getUpdateFile(change, consolePath)
+	// 更新的文件
+	for _, f := range change {
+		fullPath := ""
+		for _, conDir := range consolePath {
+			if PathExist(conDir + f) {
+				fullPath = conDir + f
+				break
+			}
+		}
+		if fullPath != "" {
+			go reg.updateConsolePage(f, fullPath)
+		}
+	}
+
 	// 删除文件
 	for _, rFile := range remove {
-		reg.deleteConsolePage(rFile)
+		go reg.deleteConsolePage(rFile)
+	}
+
+	for {
+		select {
+		case update := <-updateChan:
+			if update.Status != "ok" {
+				panic("RPC服务更新文件, 接口报错:" + update.Msg)
+			}
+		case remove := <-removeChan:
+			if remove.Status != "ok" {
+				panic("RPC服务删除文件, 接口报错:" + remove.Msg)
+			}
+		}
 	}
 }
 
@@ -54,14 +92,14 @@ func (reg *SRegister) ConsolePageSync() {
 func (reg *SRegister) checkConsolePageDiff() [][]string  {
 
 	if reg.ServiceData["pageServer"] == nil {
-		MyLog.Error("缺少请求同步地址！")
+		panic("缺少请求同步地址！")
 	}
 
+	host := reg.ServiceData["pageServer"]["host"]
 	key := reg.getKey()
 	list := JsonEncode(getAllConsolePages())
 	sign := Md5(fmt.Sprintf("%s.%s.%s", IntToStr(Time()), list, key))
 
-	host := reg.ServiceData["pageServer"]["host"]
 	url := fmt.Sprintf("%scheck/%s/%s?time=%s&sign=%s", host, reg.App, reg.Name, IntToStr(Time()), sign)
 
 	MyLog.Info("获取console前端文件: " + list)
@@ -71,51 +109,35 @@ func (reg *SRegister) checkConsolePageDiff() [][]string  {
 		"list": list,
 	})
 	if err != nil {
-		MyLog.Error("curl执行错误" + err.Error())
+		panic("检查页面请求执行url错误" + err.Error())
 	}
 
-	result := resolveResponse(response)
-	if result.Status != "ok" {
-		MyLog.Error("RPC服务同步page文件获取列表返回: ", result)
+	body, _ := ioutil.ReadAll(response.Body)
+	MyLog.Debug("检查页面curl返回：" +  string(body))
+
+	resp := RespFields{}
+	JsonDecode(string(body), &resp)
+	if resp.Status != "ok" {
+		panic("RPC服务同步page文件获取列表返回: " + string(body))
 	}
 
-	return result.List
-}
-
-/**
-	获取待更新的文件
- */
-func (reg *SRegister) getUpdateFile(change []string, dirArr []string) {
-
-	for _, f := range change {
-		fullPath := ""
-		for _, dir := range dirArr {
-			if PathExist(dir + f) {
-				fullPath = dir + f
-				break
-			}
-		}
-		if fullPath != "" {
-			reg.updateConsolePage(f, fullPath)
-		}
-	}
+	return resp.List
 }
 
 /**
 	执行更新文件
  */
 func (reg *SRegister) updateConsolePage (file string, fullPath string) {
-	host 	:= reg.getHost()
-	key     := reg.getKey()
-	app 	:= reg.GetApp()
-	name 	:= reg.GetName()
 
-	hash 	:= Md5File(fullPath)
+	host := reg.getHost()
+	key := reg.getKey()
+	app := reg.GetApp()
+	name := reg.GetName()
+	hash := Md5File(fullPath)
 	timeStr := IntToStr(Time())
-	sign    := Md5(fmt.Sprintf("%s.%s.%s.%s", timeStr, file, hash, key))
+	sign := Md5(fmt.Sprintf("%s.%s.%s.%s", timeStr, file, hash, key))
 
 	url := fmt.Sprintf("%sup/%s/%s/%s?time=%s&hash=%s&sign=%s", host, app, name, file, timeStr, hash, sign)
-
 	MyLog.Debug("更新请求地址：" +  url)
 
 	b, err := ioutil.ReadFile(fullPath)
@@ -124,15 +146,16 @@ func (reg *SRegister) updateConsolePage (file string, fullPath string) {
 	}
 
 	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Put(url, strings.NewReader(string(b)))
-
 	if err != nil {
-		MyLog.Error("curl执行错误" + err.Error())
+		panic("更新文件执行curl错误" + err.Error())
 	}
 
-	result := resolveResponse(response)
-	if result.Status != "ok" {
-		MyLog.Error("RPC服务更新文件：" + file  + " 接口报错：", result)
-	}
+	body, _ := ioutil.ReadAll(response.Body)
+	MyLog.Debug("更新文件 - " + file +  " ，curl返回：" +  string(body))
+
+	resp := RespFields{}
+	JsonDecode(string(body), &resp)
+	updateChan<-resp
 }
 
 /**
@@ -145,19 +168,22 @@ func (reg *SRegister) deleteConsolePage(file string) {
 	name := reg.GetName()
 	host := reg.getHost()
 	time := IntToStr(Time())
-
 	sign := Md5(fmt.Sprintf("%s.%s.%s", time, file, key))
+
 	url  := fmt.Sprintf("%srm/%s/%s/%s?time=%s&sign=%s", host, app, name, file, time, sign)
+	MyLog.Debug("删除请求地址：" +  url)
 
 	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Get(url, map[string]string{})
 	if err != nil {
-		MyLog.Error("curl执行错误" + err.Error())
+		panic("删除文件执行curl错误" + err.Error())
 	}
 
-	result := resolveResponse(response)
-	if result.Status != "ok" {
-		MyLog.Error("RPC服务删除文件" + file  + "接口返回" , result)
-	}
+	body, _ := ioutil.ReadAll(response.Body)
+	MyLog.Debug("删除文件 - " + file + "，curl返回：" +  string(body))
+
+	resp := RespFields{}
+	JsonDecode(string(body), &resp)
+	removeChan<-resp
 }
 
 
@@ -196,14 +222,4 @@ func loopFindAllFile(folder string) {
 			vueFileList = append(vueFileList, folder + "/" + file.Name())
 		}
 	}
-}
-
-func resolveResponse(response *httpclient.Response) RespFields {
-
-	body, _ := ioutil.ReadAll(response.Body)
-	resp := RespFields{}
-	JsonDecode(string(body), &resp)
-
-	MyLog.Debug("curl结果返回：" +  string(body))
-	return resp
 }

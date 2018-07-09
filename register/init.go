@@ -2,6 +2,7 @@ package register
 
 import (
 	"github.com/alecthomas/log4go"
+	"fmt"
 )
 
 type SRegister struct {
@@ -40,26 +41,35 @@ var (
 /**
 	工厂创建
  */
-func NewRegister(rfg RegConfig) *SRegister {
+func New(rfg RegConfig) (*SRegister, error) {
 
 	if rfg.LogName == "" {
 		rfg.LogName = defaultLogName
 	}
 
-	if rfg.ConfigPath == "" || !IsExist(rfg.ConfigPath) {
+	if rfg.ConfigPath == "" {
 		rfg.ConfigPath = DefaultBaseDir() + "/config.yml"
 	}
 
 	if rfg.ConsolePath != nil {
 		consolePath = checkConsolePath(rfg.ConsolePath)
 	} else {
+
+		if !IsExist(defaultConsolePath()) {
+			return nil, fmt.Errorf("console文件目录:%s 不存在", defaultConsolePath())
+		}
 		consolePath = append(consolePath, defaultConsolePath())
 	}
 
 	MyRpc  = NewMyRpc()
 	MyLog  = NewLog4go(rfg.IsDebug, rfg.LogName)
 
-	conf   := LoadConfig(rfg.ConfigPath)
+	conf, err := LoadConfig(rfg.ConfigPath)
+
+	if err != nil {
+		return nil, err
+	}
+
 	client := NewClient(conf.Console.Host, tcpConf)
 
 	return &SRegister{
@@ -67,7 +77,7 @@ func NewRegister(rfg RegConfig) *SRegister {
 		MyLog,
 		client,
 		false,
-		make (map[string]map[string]string)}
+		make (map[string]map[string]string)}, nil
 }
 
 func (reg *SRegister) GetApp() string {
