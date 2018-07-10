@@ -28,25 +28,32 @@ import (
 	"hub000.xindong.com/core-system/server-register-go/service"
 )
 
+
 /**
-	 测试注册服务
+测试注册服务
  */
-
 func main() {
-	myReg := register.NewRegister(register.RegConfig{
-    		IsDebug: false,
-    })
 
-    // 加载rpc 方法
-    register.LoadService("", service.NewService(myReg))
-    register.LoadService("sys", service.NewSysService(myReg))
+	myReg, err := register.New(register.RegConfig{
+		IsDebug: false,
+	})
 
-    // 增加单个方法
-    register.MyRpc.AddFunction("test", func() string {
-        return "just test"
-    })
+	if err != nil {
+		panic(err.Error())
+	}
 
-    myReg.CreateClient()
+	// 加载rpc 方法
+	register.LoadService("sys", service.NewSysService(myReg))
+
+	// 增加扩展类
+	register.LoadService("test", service.NewTestService("test service"))
+
+	// 增加单个方法
+	register.MyRpc.AddFunction("hello", func() string {
+		return "hello world"
+	})
+
+	myReg.CreateClient()
 }
 
 ```
