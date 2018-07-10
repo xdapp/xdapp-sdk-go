@@ -7,6 +7,7 @@ import (
 	"strings"
 	"github.com/ddliu/go-httpclient"
 	"log"
+	"sync"
 )
 
 /**
@@ -23,10 +24,7 @@ type RespFields struct {
  */
 const timeOut = 5
 
-var (
-	updateChan = make(chan RespFields, 5)
-	removeChan = make(chan RespFields, 5)
-)
+var wg sync.WaitGroup
 
 /**
 	console页面文件列表
@@ -63,27 +61,23 @@ func (reg *SRegister) ConsolePageSync() {
 			}
 		}
 		if fullPath != "" {
-			go reg.updateConsolePage(f, fullPath)
+			wg.Add(1)
+			go func(file string, fullPath string) {
+				defer wg.Done()
+				reg.updateConsolePage(file, fullPath)
+			}(f, fullPath)
 		}
 	}
 
 	// 删除文件
 	for _, rFile := range remove {
-		go reg.deleteConsolePage(rFile)
+		wg.Add(1)
+		go func(file string) {
+			defer wg.Done()
+			reg.deleteConsolePage(file)
+		}(rFile)
 	}
-
-	for {
-		select {
-		case update := <-updateChan:
-			if update.Status != "ok" {
-				panic("RPC服务更新文件, 接口报错:" + update.Msg)
-			}
-		case remove := <-removeChan:
-			if remove.Status != "ok" {
-				panic("RPC服务删除文件, 接口报错:" + remove.Msg)
-			}
-		}
-	}
+	wg.Wait()
 }
 
 /**
@@ -155,7 +149,9 @@ func (reg *SRegister) updateConsolePage (file string, fullPath string) {
 
 	resp := RespFields{}
 	JsonDecode(string(body), &resp)
-	updateChan<-resp
+	if resp.Status != "ok" {
+		panic("RPC服务更新文件, 接口报错:" + resp.Msg)
+	}
 }
 
 /**
@@ -183,7 +179,9 @@ func (reg *SRegister) deleteConsolePage(file string) {
 
 	resp := RespFields{}
 	JsonDecode(string(body), &resp)
-	removeChan<-resp
+	if resp.Status != "ok" {
+		panic("RPC服务删除文件, 接口报错:" + resp.Msg)
+	}
 }
 
 
