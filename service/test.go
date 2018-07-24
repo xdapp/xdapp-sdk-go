@@ -3,12 +3,10 @@ package service
 /**
 	测试增加扩展类
  */
-type TestService struct {
-	name string
+type Test struct {
+	Name string
 }
-func NewTestService(name string) *TestService{
-	return &TestService{name}
-}
-func (service *TestService) Say() string {
-	return service.name
+
+func (service *Test) Say() string {
+	return service.Name
 }

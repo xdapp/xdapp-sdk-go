@@ -19,10 +19,10 @@ func main() {
 	}
 
 	// 加载rpc 方法
-	register.LoadService("sys", service.NewSysService(myReg))
+	register.LoadService("sys", &service.Sys{myReg})
 
 	// 增加扩展类
-	register.LoadService("test", service.NewTestService("test service"))
+	register.LoadService("test", &service.Test{"test service"})
 
 	// 增加单个方法
 	register.MyRpc.AddFunction("hello", func() string {

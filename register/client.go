@@ -37,14 +37,6 @@ type tcpConfig struct {
 const defaultMaxLen  = 0x200020
 
 /**
-	tcp 配置
- */
-var tcpConf = tcpConfig {
-	1,				// 包长开始位
-	13,				// 1字节消息类型+4字节消息体长度+4字节用户id+4字节原消息fd+内容（id+data）
-	0x200000}			// 最大包长度
-
-/**
 	连接
  */
 func (cli *Client) OnConnect() {

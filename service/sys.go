@@ -32,30 +32,26 @@ type ILogger interface {
 	Error(arg0 interface{}, args ...interface{})
 }
 
-type SysService struct {
-	register IRegister
+type Sys struct {
+	Register IRegister
 }
 
-func NewSysService(register IRegister) *SysService {
-	return &SysService{register: register}
+func (service *Sys) getApp() string {
+	return service.Register.GetApp()
 }
 
-func (service *SysService) getApp() string {
-	return service.register.GetApp()
+func (service *Sys) getName() string {
+	return service.Register.GetName()
 }
 
-func (service *SysService) getName() string {
-	return service.register.GetName()
-}
-
-func (service *SysService) getKey() string {
-	return service.register.GetKey()
+func (service *Sys) getKey() string {
+	return service.Register.GetKey()
 }
 
 /**
 	注册服务，在连接到 console 微服务系统后，会收到一个 sys_reg() 的rpc回调
   */
-func (service *SysService) Reg(time int64, rand string, hash string) []interface{} {
+func (service *Sys) Reg(time int64, rand string, hash string) []interface{} {
 
 	// 当前方法名
 	fun := strings.ToLower(GetFuncName())
@@ -82,47 +78,47 @@ func (service *SysService) Reg(time int64, rand string, hash string) []interface
 /**
 	获取菜单列表
  */
-func (service *SysService) Menu() {
+func (service *Sys) Menu() {
 
 }
 
 /**
 	注册失败
  */
-func (service *SysService) RegErr(msg string, data interface{}) {
-	service.register.SetRegSuccess(false)
-	service.register.Error("注册失败", msg, data)
+func (service *Sys) RegErr(msg string, data interface{}) {
+	service.Register.SetRegSuccess(false)
+	service.Register.Error("注册失败", msg, data)
 }
 
 /**
 	注册成功回调
  */
-func (service *SysService) RegOk(data map[string]map[string]string, time int, rand string, hash string) {
+func (service *Sys) RegOk(data map[string]map[string]string, time int, rand string, hash string) {
 
 	app  := service.getApp()
 	key  := service.getKey()
 	name := service.getName()
 
 	if getHash(app, name, IntToStr(time), rand, key) != hash {
-		service.register.SetRegSuccess(false)
-		service.register.CloseClient()
+		service.Register.SetRegSuccess(false)
+		service.Register.CloseClient()
 		return
 	}
 
 	// 注册成功
-	service.register.SetRegSuccess(true)
-	service.register.SetServiceData(data)
+	service.Register.SetRegSuccess(true)
+	service.Register.SetServiceData(data)
 
-	service.register.Debug("RPC服务注册成功，服务名:" + app + "-> " + name)
+	service.Register.Debug("RPC服务注册成功，服务名:" + app + "-> " + name)
 
 	// 同步页面
-	service.register.ConsolePageSync()
+	service.Register.ConsolePageSync()
 }
 
 /**
 	测试接口
  */
-func (service *SysService) Test(str string) {
+func (service *Sys) Test(str string) {
 	fmt.Println(str)
 }
 

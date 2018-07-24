@@ -2,7 +2,6 @@ package register
 
 import (
 	"github.com/alecthomas/log4go"
-	"fmt"
 )
 
 type SRegister struct {
@@ -21,6 +20,9 @@ type RegConfig struct {
 	LogName 	string		`log文件名`
 	ConfigPath 	string		`配置文件路径`
 	ConsolePath []string	`console前端文件目录`
+	packageLengthOffset int `tcp包长度位位置`
+	packageBodyOffset   int `tcp消息体位置`
+	packageMaxLength    int `tcp最大长度`
 }
 
 const (
@@ -30,6 +32,9 @@ const (
 	defaultName    = "console"
 	defaultKey     = ""
 	defaultLogName = "test.log"
+	defaultPackageLengthOffset =  1			// 长度位移位
+	defaultPackageBodyOffset   =  13		// 1字节消息类型+4字节消息体长度+4字节用户id+4字节原消息fd+内容（id+data）
+	defaultPackageMaxLength	   = 0x200000	// 最大的长度
 )
 
 var (
@@ -51,26 +56,41 @@ func New(rfg RegConfig) (*SRegister, error) {
 		rfg.ConfigPath = DefaultBaseDir() + "/config.yml"
 	}
 
+	/**
+		tcp 配置
+	 */
+	if rfg.packageLengthOffset == 0 {
+		rfg.packageLengthOffset = defaultPackageLengthOffset
+	}
+	if rfg.packageBodyOffset == 0 {
+		rfg.packageBodyOffset = defaultPackageBodyOffset
+	}
+	if rfg.packageMaxLength == 0 {
+		rfg.packageMaxLength = defaultPackageMaxLength
+	}
+
 	if rfg.ConsolePath != nil {
 		consolePath = checkConsolePath(rfg.ConsolePath)
 	} else {
-
-		if !IsExist(defaultConsolePath()) {
-			return nil, fmt.Errorf("console文件目录:%s 不存在", defaultConsolePath())
+		if IsExist(defaultConsolePath()) {
+			consolePath = append(consolePath, defaultConsolePath())
 		}
-		consolePath = append(consolePath, defaultConsolePath())
 	}
 
 	MyRpc  = NewMyRpc()
 	MyLog  = NewLog4go(rfg.IsDebug, rfg.LogName)
 
 	conf, err := LoadConfig(rfg.ConfigPath)
+	host := conf.Console.Host
 
 	if err != nil {
 		return nil, err
 	}
 
-	client := NewClient(conf.Console.Host, tcpConf)
+	client := NewClient(host, tcpConfig {
+		rfg.packageLengthOffset,
+		rfg.packageBodyOffset,
+		rfg.packageMaxLength})
 
 	return &SRegister{
 		conf.Console,
@@ -140,14 +160,14 @@ func (reg *SRegister) CreateClient() {
 		dataLen := len(rs)
 
 		// 小于最大包长度 直接发送
-		if dataLen < tcpConf.packageMaxLength {
+		if dataLen < reg.Client.packageMaxLength {
 			Send(reg.Client, request.Flag | 4, request.Fd, string(rs))
 		} else {
 
 			// 大于 拆包分段发送
-			for i := 0; i < dataLen; i += tcpConf.packageMaxLength {
+			for i := 0; i < dataLen; i += reg.Client.packageMaxLength {
 
-				chunkLength := Min(tcpConf.packageMaxLength, dataLen - i)
+				chunkLength := Min(reg.Client.packageMaxLength, dataLen - i)
 				chunk := Substr(string(rs), i, chunkLength)
 
 				flag := request.Flag
