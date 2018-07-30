@@ -6,7 +6,7 @@ import (
 
 type SRegister struct {
 	console
-	Logger      *log4go.Logger                 // 创建的tcp客户端对象
+	Logger      *log4go.Logger                 // log 日志
 	Client      *Client                        // 创建的tcp客户端对象
 	RegSuccess  bool                           // 注册成功标志
 	ServiceData (map[string]map[string]string) // console 注册成功返回的页面服务器信息
@@ -81,11 +81,10 @@ func New(rfg RegConfig) (*SRegister, error) {
 	MyLog  = NewLog4go(rfg.IsDebug, rfg.LogName)
 
 	conf, err := LoadConfig(rfg.ConfigPath)
-	host := conf.Console.Host
-
 	if err != nil {
 		return nil, err
 	}
+	host := conf.Console.Host
 
 	client := NewClient(host, tcpConfig {
 		rfg.packageLengthOffset,
@@ -117,6 +116,10 @@ func (reg *SRegister) SetRegSuccess(status bool) {
 
 func (reg *SRegister) SetServiceData(data map[string]map[string]string) {
 	reg.ServiceData = data
+}
+
+func (reg *SRegister) GetFunctions() []string {
+	return MyRpc.GetFunctions()
 }
 
 func (reg *SRegister) CloseClient() {

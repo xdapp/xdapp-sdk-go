@@ -13,6 +13,7 @@ import (
 
 type IRegister interface {
 	GetApp() string
+	GetFunctions() []string
 	GetName() string
 	GetKey() string
 	SetRegSuccess(status bool)
@@ -51,19 +52,16 @@ func (service *Sys) getKey() string {
 /**
 	注册服务，在连接到 console 微服务系统后，会收到一个 sys_reg() 的rpc回调
   */
-func (service *Sys) Reg(time int64, rand string, hash string) []interface{} {
-
-	// 当前方法名
-	fun := strings.ToLower(GetFuncName())
+func (service *Sys) Reg(time int64, rand string, hash string) map[string]interface{} {
 
 	// 验证hash
 	if Sha1(fmt.Sprintf("%s.%s.%s", IntToStr(time), rand, "xdapp.com")) != hash {
-		return []interface{} {fun, false};
+		return nil
 	}
 
 	// 超时
 	if Time() - time > 180 {
-		return []interface{} {fun, false};
+		return nil
 	}
 
 	app  := service.getApp()
@@ -72,7 +70,7 @@ func (service *Sys) Reg(time int64, rand string, hash string) []interface{} {
 	time  = Time()
 	hash  = getHash(app, name, IntToStr(time), rand, key)
 
-	return []interface{} {fun, map[string]interface{}{"app": app, "name": name , "time": time, "rand": rand, "hash": hash}}
+	return map[string]interface{}{"app": app, "name": name , "time": time, "rand": rand, "hash": hash}
 }
 
 /**
@@ -120,6 +118,13 @@ func (service *Sys) RegOk(data map[string]map[string]string, time int, rand stri
  */
 func (service *Sys) Test(str string) {
 	fmt.Println(str)
+}
+
+/**
+获取rpc方法列表
+ */
+func (service *Sys) GetFunctions() []string {
+	return service.Register.GetFunctions()
 }
 
 /**

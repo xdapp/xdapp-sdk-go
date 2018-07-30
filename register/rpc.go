@@ -81,6 +81,13 @@ func LoadService(prefix string, service interface{}) {
 }
 
 /**
+获取rpc方法
+ */
+func (myRpc *sMyRpc) GetFunctions() []string {
+	return myRpc.service.MethodNames
+}
+
+/**
 	打印已注册rpc服务列表
  */
 func debugSuccessService() {
