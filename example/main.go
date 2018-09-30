@@ -3,11 +3,12 @@ package main
 import (
 	"server-register-go/register"
 	"server-register-go/service"
+	"fmt"
 )
 
 /**
 测试注册服务
- */
+*/
 func main() {
 
 	myReg, err := register.New(register.RegConfig{
@@ -19,15 +20,15 @@ func main() {
 	}
 
 	// 加载rpc 方法
-	register.LoadService("sys", &service.Sys{myReg})
-
-	// 增加扩展类
-	register.LoadService("test", &service.Test{"test service"})
+	register.AddInstanceMethods(&service.Sys{myReg}, "sys")
+	register.AddInstanceMethods(&service.Test{"test service"}, "test")
 
 	// 增加单个方法
-	register.MyRpc.AddFunction("hello", func() string {
+	register.AddFunction("hello", func() string {
 		return "hello world"
 	})
 
-	myReg.CreateClient()
+	fmt.Println(myReg.GetFunctions())
+
+	myReg.Client.Connect()
 }

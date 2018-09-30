@@ -1,6 +1,8 @@
 console:
-    app: test
+    app: demo
     name: name
     key: aaaaaaaaaa
-    host: 127.0.0.1:8900
+    host: 172.26.128.243:8900
     ssl: false
+
+version: 1

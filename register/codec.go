@@ -1,122 +1,77 @@
 package register
 
 import (
-	"io"
-	"fmt"
-	"encoding/binary"
 	"bytes"
+	"encoding/binary"
 )
 
-// 返回字段
-type ResponseData struct {
-	Flag byte   // 标志位 成功 |= 4
-	Len  uint32 // data 长度 32 位短整形
-	Fd   uint32 // fd
-	Data []byte // rpc 协议数据
-}
+//  标识   | 版本    | 长度    | 头信息       | 自定义内容    |  正文
+//  ------|--------|---------|------------|-------------|-------------
+//  Flag  | Ver    | Length  | Header     | Context      | Body
+//  1     | 1      | 4       | 17         | 默认0，不定   | 不定
+//  C     | C      | N       |            |             |
+//
+//
+//  其中 Header 部分包括
+//
+//  服务ID     | rpc请求序号  | 管理员ID      | 自定义信息长度
+//  ----------|-------------|-------------|-----------------
+//  ServiceId | RequestId   | AdminId     | ContextLength
+//  4         | 4           | 4           | 1
+//  N         | N           | N           | C
 
-//  请求字段
-type RequestData struct {
+type SRequest struct {
 	Flag    byte   // 标志位 成功 |= 4
-	Len     uint32 // id + data 长度 32 位短整形
-	AdminId uint32 // 操作人id
-	Fd      uint32 // fd
-	Id      uint32 // 唯一id
-	Data    []byte // rpc 协议数据
+	Ver     byte   // 版本
+	Length  uint32 // 长度
+	SHeader		   // 头信息
 }
 
-// id字段
-type IdData struct {
-	Id uint32 // id 32 位短整形
+type SHeader struct {
+	AppId         uint32
+	ServiceId     uint32
+	RequestId     uint32
+	AdminId       uint32
+	ContextLength byte
 }
 
-/**
-	请求数据打包
- */
-func (p *RequestData) Pack() []byte {
+type SResponse struct {
+	Flag    byte   // 标志位 成功 |= 4
+	Ver     byte   // 版本
+	Length  uint32 // 长度
+}
+
+const (
+	PREFIX_LENGTH  = 6                             // Flag 1字节、 Ver 1字节、 Length 4字节、HeaderLength 1字节
+	HEADER_LENGTH  = 17                            // 默认消息头长度, 不包括 PREFIX_LENGTH
+	CONTEXT_OFFSET = PREFIX_LENGTH + HEADER_LENGTH // 自定义上下文内容所在位置，   23
+)
+
+func getFlag(buffer []byte) (flag uint8) {
+	binary.Read(bytes.NewBuffer(buffer[:1]) , binary.BigEndian, &flag)
+	return
+}
+
+func getVer(buffer []byte) (ver uint8) {
+	binary.Read(bytes.NewBuffer(buffer[1:2]) , binary.BigEndian, &ver)
+	return
+}
+
+func NewRequest(buffer []byte) *SRequest {
+	req := new(SRequest)
+	reader := bytes.NewReader(buffer)
+	binary.Read(reader, binary.BigEndian, req)
+	return req
+}
+
+func (req *SResponse)Pack() []byte {
 	var writer = new(bytes.Buffer)
-	writeData(writer, &p.Flag)
-	writeData(writer, &p.Len)
-	writeData(writer, &p.AdminId)
-	writeData(writer, &p.Fd)
-	writeData(writer, &p.Id)
-	writeData(writer, &p.Data)
+	binary.Write(writer, binary.BigEndian, req)
 	return writer.Bytes()
 }
 
-/**
-	请求数据解包
- */
-func (p *RequestData) Unpack(buffer []byte) {
-	var reader = bytes.NewReader(buffer)
-	readData(reader, &p.Flag)
-	readData(reader, &p.Len)
-	readData(reader, &p.AdminId)
-	readData(reader, &p.Fd)
-	readData(reader, &p.Id)
-	p.Data = make([]byte, p.Len - 4)		// Len 等于id长度+data
-	readData(reader, &p.Data)
-}
-
-func (p *RequestData) String() string {
-	return fmt.Sprintf("Flag:%s Length:%d AdminId:%d fd:%d id:%d data:%s",
-		p.Flag,
-		p.Len,
-		p.AdminId,
-		p.Fd,
-		p.Id,
-		p.Data,
-	)
-}
-
-/**
-	返回数据打包
- */
-func (resp *ResponseData) Pack() []byte {
+func Pack(req interface{}) []byte {
 	var writer = new(bytes.Buffer)
-	writeData(writer, &resp.Flag)
-	writeData(writer, &resp.Len)
-	writeData(writer, &resp.Fd)
-	writeData(writer, &resp.Data)
+	binary.Write(writer, binary.BigEndian, &req)
 	return writer.Bytes()
-}
-
-/**
-	返回数据解包
- */
-func (resp *ResponseData) Unpack(buffer []byte) {
-	var reader = bytes.NewReader(buffer)
-	readData(reader, &resp.Flag)
-	readData(reader, &resp.Len)
-	readData(reader, &resp.Fd)
-	resp.Data = make([]byte, resp.Len)		// Len 等于id长度+data
-	readData(reader, &resp.Data)
-}
-
-func writeData(writer io.Writer, data interface{}) {
-	err := binary.Write(writer, binary.BigEndian, data)
-	if err != nil {
-		MyLog.Error(err.Error());
-		return
-	}
-}
-
-func readData(reader io.Reader, data interface{}) {
-	err := binary.Read(reader, binary.BigEndian, data)
-	if err != nil {
-		MyLog.Error(err.Error());
-		return
-	}
-}
-
-/**
-	id 打包
- */
-func PackId(id uint32) []byte {
-	Id := &IdData{
-		Id: id,
-	}
-	buf := new(bytes.Buffer)
-	writeData(buf, &Id.Id)
-	return buf.Bytes()
 }

@@ -1,97 +1,91 @@
 package register
 
 import (
-	"github.com/hprose/hprose-golang/rpc"
 	"reflect"
-	"strings"
+	"github.com/hprose/hprose-golang/rpc"
+	"github.com/hprose/hprose-golang/io"
+	"runtime"
 )
 
-type sMyRpc struct {
-	service  *rpc.TCPService			// rpc 服务
-	context *rpc.SocketContext			// 上下文
+var (
+	RpcService *rpc.TCPService		// rpc 服务
+	RpcContext *rpc.SocketContext	// 上下文
+)
+
+func init() {
+	RpcService = rpc.NewTCPService()
+	RpcContext = new(rpc.SocketContext)
+	RpcContext.InitServiceContext(RpcService)
 }
 
 /**
-	成功服务列表
- */
-var sucRpcFunc = make(map[string]string)
-
-/**
-	屏蔽列表输出
-  */
+屏蔽列表输出
+*/
 func DoFunctionList() string {
 	return "Fa{}z"
 }
 
 /**
-	rpc初始化
- */
-func NewMyRpc() *sMyRpc {
-	service := rpc.NewTCPService()
-	context := new(rpc.SocketContext)
-	context.InitServiceContext(service)
-	return &sMyRpc{service: service, context:context}
+执行结果
+*/
+func RpcHandle(data []byte) []byte {
+	return RpcService.Handle(data, RpcContext)
 }
 
-/**
-	执行结果
- */
-func (myRpc *sMyRpc) handle(data []byte, context rpc.Context) []byte {
-	return myRpc.service.Handle(data, context)
+func AddFunction(name string, function interface{}, option ...rpc.Options) {
+	RpcService.AddFunction(name, function, option...)
 }
 
-/**
-	注册方法
- */
-func (myRpc *sMyRpc) AddFunction(name string, function interface{}, option ...rpc.Options) {
-
-	if sucRpcFunc[name] != ""  {
-		MyLog.Error("RPC服务已经存在 " + name + ", 已忽略 ")
-	}
-	MyLog.Debug("增加RPC方法： " + name)
-
-	myRpc.service.AddFunction(name, function, option...)
-	sucRpcFunc[name] = name + "()"
+func AddInstanceMethods(obj interface{}, namespace string) {
+	RpcService.AddInstanceMethods(obj, rpc.Options{NameSpace: namespace})
 }
 
-/**
-	加载service 作为receiver的可执行的所有方法
-  */
-func LoadService(prefix string, service interface{}) {
-
-	t := reflect.TypeOf(service)
-	v := reflect.ValueOf(service)
-
-	for i := 0; i < t.NumMethod(); i++ {
-		m := t.Method(i)
-		mv := v.MethodByName(m.Name) 	//获取对应的方法
-
-		if !mv.IsValid() {            	//判断方法是否存在
-			MyLog.Warn(m.Name + "方法不存在！")
-			continue
-		}
-
-		// 注册rpc方法
-		rpcName := strings.ToLower(m.Name)
-		if prefix != "" {
-			rpcName = prefix + "_" + strings.ToLower(m.Name)
-		}
-		MyRpc.AddFunction(rpcName, mv)
-	}
+func rpcEncode(name string, args []reflect.Value) []byte {
+	writer := io.NewWriter(false)
+	writer.WriteByte(io.TagCall)
+	writer.WriteString(name)
+	writer.Reset()
+	writer.WriteSlice(args)
+	writer.WriteByte(io.TagEnd)
+	return writer.Bytes()
 }
 
-/**
-获取rpc方法
- */
-func (myRpc *sMyRpc) GetFunctions() []string {
-	return myRpc.service.MethodNames
+func (reg *SRegister) RpcCall(name string, args []reflect.Value) interface{} {
+
+	go func(name string, args []reflect.Value) interface{} {
+
+		id := uint32(1)
+		workerId := uint16(1)
+		custom := Pack(workerId)
+		body   := rpcEncode(name, args)
+		length := uint32(HEADER_LENGTH + len(custom) + len(body))
+
+		request := &SRequest{0, 1, length,SHeader{0, 1, id, 1,uint8(len(custom))}}
+
+		call := BytesCombine(Pack(request), custom, body)
+		reg.Client.Send(call)
+
+		runtime.Gosched()
+		return <-rpcCallChan
+	}(name, args)
+
+	return <-rpcCallChan
 }
 
-/**
-	打印已注册rpc服务列表
- */
-func debugSuccessService() {
-	if  sucRpcFunc != nil {
-		MyLog.Debug("已注册的rpc服务列表: " + Implode(",", sucRpcFunc))
-	}
+func rpcCall1() {
+	//ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+	//defer cancel()
 }
+
+//// NewContext returns a new Context carrying userIP.
+//func NewContext(ctx context.Context, userIP net.IP) context.Context {
+//	return context.WithValue(ctx, userIPKey, userIP)
+//}
+//
+//// FromContext extracts the user IP address from ctx, if present.
+//func FromContext(ctx context.Context) (net.IP, bool) {
+//	// ctx.Value returns nil if ctx has no value for the key;
+//	// the net.IP type assertion returns ok=false for nil.
+//	userIP, ok := ctx.Value(userIPKey).(net.IP)
+//	return userIP, ok
+//}

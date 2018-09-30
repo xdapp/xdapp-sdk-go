@@ -1,14 +1,17 @@
 package register
 
 import (
-	"strings"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"os"
-	"crypto/md5"
 	"io"
-	"time"
+	"os"
 	"strconv"
+	"strings"
+	"time"
+	"bytes"
+	"runtime"
+	"path/filepath"
 )
 
 /**
@@ -35,6 +38,7 @@ func JsonDecode(str string, fields interface{}) {
 		fmt.Println(err.Error())
 	}
 }
+
 /**
 
  */
@@ -47,8 +51,8 @@ func Implode(split string, array map[string]string) string {
 }
 
 /**
-	文件md5
- */
+文件md5
+*/
 func Md5File(path string) string {
 	file, err := os.Open(path)
 	if err != nil {
@@ -61,8 +65,8 @@ func Md5File(path string) string {
 }
 
 /**
-	md5
- */
+md5
+*/
 func Md5(str string) string {
 	hash := md5.New()
 	hash.Write([]byte(str))
@@ -71,8 +75,8 @@ func Md5(str string) string {
 }
 
 /**
-	当前时间
- */
+当前时间
+*/
 func Time() int64 {
 	return time.Now().Unix()
 }
@@ -89,25 +93,19 @@ func IntToStr(data interface{}) string {
 	}
 }
 
-/**
-
- */
 func StrToInt(str string) int {
 	data, _ := strconv.Atoi(str)
 	return data
 }
 
-/**
-
- */
 func StrToInt64(str string) int64 {
 	data, _ := strconv.ParseInt(str, 10, 64)
 	return data
 }
 
 /**
-	判断文件存在
- */
+判断文件存在
+*/
 func PathExist(_path string) bool {
 	_, err := os.Stat(_path)
 	if err != nil && os.IsNotExist(err) {
@@ -127,8 +125,8 @@ func Min(a, b int) int {
 }
 
 /**
-	字符串截取
- */
+字符串截取
+*/
 func Substr(s string, pos int, length int) string {
 	runes := []rune(s)
 	l := pos + length
@@ -136,4 +134,27 @@ func Substr(s string, pos int, length int) string {
 		l = len(runes)
 	}
 	return string(runes[pos:l])
+}
+
+/**
+BytesCombine 多个[]byte数组合并成一个[]byte
+ */
+func BytesCombine(pBytes ...[]byte) []byte {
+	return bytes.Join(pBytes, []byte(""))
+}
+
+/**
+获取函数名
+*/
+func GetFuncName() string {
+	pc, _, _, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	funcName = filepath.Ext(funcName)
+	funcName = strings.TrimPrefix(funcName, ".")
+	return funcName
+}
+
+func IsExist(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil || os.IsExist(err)
 }

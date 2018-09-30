@@ -18,6 +18,7 @@
   packages = [
     "io",
     "rpc",
+    "rpc/filter/jsonrpc",
     "util"
   ]
   revision = "b2b25423cffe1829254b1e4fbc6f0a7360dd626b"
@@ -32,6 +33,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4a7105890cdb7bb365f51f6e2c3f18dee8167a723928d98ceb8d9a3cac482657"
+  inputs-digest = "5759502e2630d0f1857d3ad830b7cf071b5c47ce04ac37803d642a95d8ca3ea6"
   solver-name = "gps-cdcl"
   solver-version = 1

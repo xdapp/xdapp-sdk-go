@@ -53,7 +53,7 @@ func main() {
 		return "hello world"
 	})
 
-	myReg.CreateClient()
+	myReg.CreateServiceSocket()
 }
 
 ```

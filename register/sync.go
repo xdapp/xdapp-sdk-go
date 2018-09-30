@@ -2,54 +2,71 @@ package register
 
 import (
 	"fmt"
-	"path"
-	"io/ioutil"
-	"strings"
 	"github.com/ddliu/go-httpclient"
+	"io/ioutil"
 	"log"
+	"path"
+	"strings"
 	"sync"
 )
 
 /**
-	返回结构体
- */
+返回结构体
+*/
 type RespFields struct {
-	Status	string				// 状态
-	Msg	    string				// 消息
-	List    [][]string			// 列表
+	Status string     // 状态
+	Msg    string     // 消息
+	List   [][]string // 列表
 }
 
 /**
-	超时
- */
+超时
+*/
 const timeOut = 5
 
 var wg sync.WaitGroup
 
 /**
-	console页面文件列表
- */
+console页面文件列表
+*/
 var vueFileList []string
 
 /**
-	同步Console页面文件
- */
+前端页面目录
+  */
+var consolePath []string
+
+func setConsolePath(path []string) {
+	var descPath []string
+	// 校验前端目录
+	for _, p := range path {
+		if !IsExist(p) {
+			continue
+		}
+		descPath = append(descPath, p)
+	}
+	consolePath = descPath
+}
+
+/**
+同步Console页面文件
+*/
 func (reg *SRegister) ConsolePageSync() {
 
-	MyLog.Debug("前端文件目录：" + JsonEncode(consolePath))
+	Logger.Debug("前端文件目录：" + JsonEncode(consolePath))
 
-	defer func(){
+	defer func() {
 		if err := recover(); err != nil {
 			log.Fatal(err)
 		}
 	}()
 
-	list 	:= reg.checkConsolePageDiff()
-	change 	:= list[0]
-	remove 	:= list[1]
+	list   := reg.checkConsolePageDiff()
+	change := list[0]
+	remove := list[1]
 
-	MyLog.Debug("待修改文件列表:" + JsonEncode(change))
-	MyLog.Debug("待删除文件列表:" + JsonEncode(remove))
+	Logger.Debug("待修改文件列表:" + JsonEncode(change))
+	Logger.Debug("待删除文件列表:" + JsonEncode(remove))
 
 	// 更新的文件
 	for _, f := range change {
@@ -81,23 +98,21 @@ func (reg *SRegister) ConsolePageSync() {
 }
 
 /**
-	检查页面差异
- */
-func (reg *SRegister) checkConsolePageDiff() [][]string  {
+检查页面差异
+*/
+func (reg *SRegister) checkConsolePageDiff() [][]string {
 
 	if reg.ServiceData["pageServer"] == nil {
 		panic("缺少请求同步地址！")
 	}
 
-	host := reg.ServiceData["pageServer"]["host"]
-	key := reg.getKey()
+	time := IntToStr(Time())
 	list := JsonEncode(getAllConsolePages())
-	sign := Md5(fmt.Sprintf("%s.%s.%s", IntToStr(Time()), list, key))
+	sign := Md5(fmt.Sprintf("%s.%s.%s", time, list, reg.getKey()))
+	url  := reg.getUrl("check", sign, time, map[string]string{})
 
-	url := fmt.Sprintf("%scheck/%s/%s?time=%s&sign=%s", host, reg.App, reg.Name, IntToStr(Time()), sign)
-
-	MyLog.Info("获取console前端文件: " + list)
-	MyLog.Debug("获取ServiceData: " + JsonEncode(reg.ServiceData))
+	Logger.Info("获取console前端文件: " + list)
+	Logger.Debug("获取ServiceData: " + JsonEncode(reg.ServiceData))
 
 	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Post(url, map[string]string{
 		"list": list,
@@ -107,7 +122,7 @@ func (reg *SRegister) checkConsolePageDiff() [][]string  {
 	}
 
 	body, _ := ioutil.ReadAll(response.Body)
-	MyLog.Debug("检查页面curl返回：" +  string(body))
+	Logger.Debug("检查页面curl返回：" + string(body))
 
 	resp := RespFields{}
 	JsonDecode(string(body), &resp)
@@ -119,20 +134,14 @@ func (reg *SRegister) checkConsolePageDiff() [][]string  {
 }
 
 /**
-	执行更新文件
- */
-func (reg *SRegister) updateConsolePage (file string, fullPath string) {
+执行更新文件
+*/
+func (reg *SRegister) updateConsolePage(file string, fullPath string) {
 
-	host := reg.getHost()
-	key := reg.getKey()
-	app := reg.GetApp()
-	name := reg.GetName()
 	hash := Md5File(fullPath)
-	timeStr := IntToStr(Time())
-	sign := Md5(fmt.Sprintf("%s.%s.%s.%s", timeStr, file, hash, key))
-
-	url := fmt.Sprintf("%sup/%s/%s/%s?time=%s&hash=%s&sign=%s", host, app, name, file, timeStr, hash, sign)
-	MyLog.Debug("更新请求地址：" +  url)
+	time := IntToStr(Time())
+	sign := Md5(fmt.Sprintf("%s.%s.%s.%s", time, file, hash, reg.getKey()))
+	url  := reg.getUrl("upload", sign, time, map[string]string{"file":file, "hash": hash})
 
 	b, err := ioutil.ReadFile(fullPath)
 	if err != nil {
@@ -145,7 +154,7 @@ func (reg *SRegister) updateConsolePage (file string, fullPath string) {
 	}
 
 	body, _ := ioutil.ReadAll(response.Body)
-	MyLog.Debug("更新文件 - " + file +  " ，curl返回：" +  string(body))
+	Logger.Debug("更新文件 - " + file + " ，curl返回：" + string(body))
 
 	resp := RespFields{}
 	JsonDecode(string(body), &resp)
@@ -155,19 +164,16 @@ func (reg *SRegister) updateConsolePage (file string, fullPath string) {
 }
 
 /**
-	执行删除文件
- */
+执行删除文件
+*/
 func (reg *SRegister) deleteConsolePage(file string) {
 
-	key  := reg.getKey()
-	app  := reg.GetApp()
-	name := reg.GetName()
-	host := reg.getHost()
 	time := IntToStr(Time())
-	sign := Md5(fmt.Sprintf("%s.%s.%s", time, file, key))
+	sign := Md5(fmt.Sprintf("%s.%s.%s", time, file, reg.getKey()))
 
-	url  := fmt.Sprintf("%srm/%s/%s/%s?time=%s&sign=%s", host, app, name, file, time, sign)
-	MyLog.Debug("删除请求地址：" +  url)
+	url  := reg.getUrl("remove", sign, time, map[string]string{"file":file})
+
+	Logger.Debug("删除请求地址：" + url)
 
 	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Get(url, map[string]string{})
 	if err != nil {
@@ -175,7 +181,7 @@ func (reg *SRegister) deleteConsolePage(file string) {
 	}
 
 	body, _ := ioutil.ReadAll(response.Body)
-	MyLog.Debug("删除文件 - " + file + "，curl返回：" +  string(body))
+	Logger.Debug("删除文件 - " + file + "，curl返回：" + string(body))
 
 	resp := RespFields{}
 	JsonDecode(string(body), &resp)
@@ -184,10 +190,9 @@ func (reg *SRegister) deleteConsolePage(file string) {
 	}
 }
 
-
 /**
-	获取所有Console用到的页面列表
- */
+获取所有Console用到的页面列表
+*/
 func getAllConsolePages() map[string]string {
 
 	list := make(map[string]string)
@@ -198,7 +203,7 @@ func getAllConsolePages() map[string]string {
 
 		for _, f := range vueFileList {
 			if ext := path.Ext(f); ext == ".tpl" || ext == ".vue" {
-				fileName := Substr(f, dirLen, len(f) - dirLen)
+				fileName := Substr(f, dirLen, len(f)-dirLen)
 				list[fileName] = Md5File(f)
 			}
 		}
@@ -206,9 +211,35 @@ func getAllConsolePages() map[string]string {
 	return list
 }
 
+func (reg *SRegister) getUrl(action string, sign string, time string, ext map[string]string) string {
+	var url string
+	switch action {
+		case "check":
+			url = fmt.Sprintf("%scheck/%s/%s?time=%s&sign=%s",
+				reg.getHost(),
+				reg.GetApp(),
+				reg.GetName(), time, sign)
+		case "upload":
+			url = fmt.Sprintf("%sup/%s/%s/%s?time=%s&hash=%s&sign=%s",
+				reg.getHost(),
+				reg.GetApp(),
+				reg.GetName(), ext["file"], time, ext["hash"], sign)
+		case "remove":
+			url = fmt.Sprintf("%srm/%s/%s/%s?time=%s&sign=%s",
+				reg.getHost(),
+				reg.GetApp(),
+				reg.GetName(),
+				ext["file"], time, sign)
+		default:
+	}
+
+	Logger.Debug(action + "url: " + url)
+	return url
+}
+
 /**
-	获取当前文件夹下全部文件
- */
+获取当前文件夹下全部文件
+*/
 func loopFindAllFile(folder string) {
 	files, _ := ioutil.ReadDir(folder)
 	for _, file := range files {
@@ -217,7 +248,7 @@ func loopFindAllFile(folder string) {
 		if file.IsDir() {
 			loopFindAllFile(folder + "/" + file.Name())
 		} else {
-			vueFileList = append(vueFileList, folder + "/" + file.Name())
+			vueFileList = append(vueFileList, folder+"/"+file.Name())
 		}
 	}
 }

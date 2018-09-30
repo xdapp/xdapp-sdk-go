@@ -2,36 +2,11 @@ package service
 
 import (
 	"fmt"
-	"strings"
-	"runtime"
-	"path/filepath"
 	"crypto/sha1"
 	"encoding/hex"
 	"time"
 	"strconv"
 )
-
-type IRegister interface {
-	GetApp() string
-	GetFunctions() []string
-	GetName() string
-	GetKey() string
-	SetRegSuccess(status bool)
-	SetServiceData(data map[string]map[string]string)
-	CloseClient()
-	ConsolePageSync()
-	ILogger
-}
-
-/**
-	logger
- */
-type ILogger interface {
-	Info(arg0 interface{}, args ...interface{})
-	Debug(arg0 interface{}, args ...interface{})
-	Warn(arg0 interface{}, args ...interface{})
-	Error(arg0 interface{}, args ...interface{})
-}
 
 type Sys struct {
 	Register IRegister
@@ -40,18 +15,19 @@ type Sys struct {
 func (service *Sys) getApp() string {
 	return service.Register.GetApp()
 }
-
 func (service *Sys) getName() string {
 	return service.Register.GetName()
 }
-
+func (service *Sys) getVersion() string {
+	return service.Register.GetVersion()
+}
 func (service *Sys) getKey() string {
 	return service.Register.GetKey()
 }
 
 /**
-	注册服务，在连接到 console 微服务系统后，会收到一个 sys_reg() 的rpc回调
-  */
+注册服务，在连接到 console 微服务系统后，会收到一个 sys_reg() 的rpc回调
+*/
 func (service *Sys) Reg(time int64, rand string, hash string) map[string]interface{} {
 
 	// 验证hash
@@ -64,33 +40,34 @@ func (service *Sys) Reg(time int64, rand string, hash string) map[string]interfa
 		return nil
 	}
 
-	app  := service.getApp()
-	key  := service.getKey()
-	name := service.getName()
-	time  = Time()
-	hash  = getHash(app, name, IntToStr(time), rand, key)
+	app     := service.getApp()
+	key     := service.getKey()
+	name    := service.getName()
+	version := service.getVersion()
 
-	return map[string]interface{}{"app": app, "name": name , "time": time, "rand": rand, "hash": hash}
+	time = Time()
+	hash = getHash(app, name, IntToStr(time), rand, key)
+	return map[string]interface{}{"app": app, "name": name, "time": time, "rand": rand, "version": version,"hash": hash}
 }
 
 /**
-	获取菜单列表
- */
+获取菜单列表
+*/
 func (service *Sys) Menu() {
 
 }
 
 /**
-	注册失败
- */
+注册失败
+*/
 func (service *Sys) RegErr(msg string, data interface{}) {
 	service.Register.SetRegSuccess(false)
 	service.Register.Error("注册失败", msg, data)
 }
 
 /**
-	注册成功回调
- */
+注册成功回调
+*/
 func (service *Sys) RegOk(data map[string]map[string]string, time int, rand string, hash string) {
 
 	app  := service.getApp()
@@ -114,34 +91,30 @@ func (service *Sys) RegOk(data map[string]map[string]string, time int, rand stri
 }
 
 /**
-	测试接口
- */
+测试接口
+*/
 func (service *Sys) Test(str string) {
 	fmt.Println(str)
 }
 
 /**
 获取rpc方法列表
- */
+*/
 func (service *Sys) GetFunctions() []string {
 	return service.Register.GetFunctions()
 }
 
 /**
-	获取函数名
- */
-func GetFuncName() string {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	funcName = filepath.Ext(funcName)
-	funcName = strings.TrimPrefix(funcName, ".")
-	return funcName;
+hash 值
+*/
+func getHash(app string, name string, time string, rand string, key string) string {
+	return Sha1(fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key))
 }
 
 
 /**
-	获取sha1加密
-  */
+获取sha1加密
+*/
 func Sha1(str string) string {
 	getHash := sha1.New()
 	getHash.Write([]byte(str))
@@ -150,8 +123,8 @@ func Sha1(str string) string {
 }
 
 /**
-	当前时间
- */
+当前时间
+*/
 func Time() int64 {
 	return time.Now().Unix()
 }
@@ -166,11 +139,4 @@ func IntToStr(data interface{}) string {
 	default:
 		return ""
 	}
-}
-
-/**
-	hash 值
- */
-func getHash(app string, name string, time string, rand string, key string) string {
-	return Sha1(fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key))
 }
