@@ -1,17 +1,17 @@
 package register
 
 import (
-	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 	"bytes"
+	"strconv"
+	"strings"
 	"runtime"
 	"path/filepath"
+	"crypto/md5"
+	"encoding/json"
 )
 
 /**
@@ -96,6 +96,10 @@ func IntToStr(data interface{}) string {
 func StrToInt(str string) int {
 	data, _ := strconv.Atoi(str)
 	return data
+}
+
+func StrToByte(str string) byte {
+	return []byte(str)[0]
 }
 
 func StrToInt64(str string) int64 {

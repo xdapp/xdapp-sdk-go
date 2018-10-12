@@ -2,10 +2,10 @@ package service
 
 type IRegister interface {
 	GetApp() string
-	GetFunctions() []string
+	GetKey() string
 	GetName() string
 	GetVersion() string
-	GetKey() string
+	GetFunctions() []string
 	SetRegSuccess(status bool)
 	SetServiceData(data map[string]map[string]string)
 	CloseClient()

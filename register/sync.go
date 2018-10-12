@@ -2,12 +2,12 @@ package register
 
 import (
 	"fmt"
-	"github.com/ddliu/go-httpclient"
-	"io/ioutil"
 	"log"
+	"sync"
 	"path"
 	"strings"
-	"sync"
+	"io/ioutil"
+	"github.com/ddliu/go-httpclient"
 )
 
 /**

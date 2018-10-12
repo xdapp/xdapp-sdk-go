@@ -31,4 +31,10 @@ func main() {
 	fmt.Println(myReg.GetFunctions())
 
 	myReg.Client.Connect()
+
+	go func() {
+		fmt.Println(1111)
+		data := myReg.RpcCall("test", nil, register.SCallConfig{Namespace: "player"})
+		fmt.Println(data)
+	}()
 }

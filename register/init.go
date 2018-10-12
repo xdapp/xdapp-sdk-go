@@ -1,13 +1,13 @@
 package register
 
 import (
-	"github.com/alecthomas/log4go"
-	"gopkg.in/yaml.v2"
 	"fmt"
-	"path/filepath"
 	"log"
 	"strings"
 	"io/ioutil"
+	"path/filepath"
+	"gopkg.in/yaml.v2"
+	"github.com/alecthomas/log4go"
 )
 /**
 配置
@@ -53,6 +53,14 @@ const (
 	defaultName                = "console"
 	defaultKey                 = ""
 	defaultLogName             = "test.log"
+
+	// 标识   | 版本    | 长度    | 头信息       | 自定义上下文  |  正文
+	// ------|--------|---------|------------|-------------|-------------
+	// Flag  | Ver    | Length  | Header     | Context     | Body
+	// 1     | 1      | 4       | 17         | 默认0不定    | 不定
+	// C     | C      | N       |            |             |
+	// length 包括 Header + Context + Body 的长度
+
 	defaultPackageLengthOffset = 2        // 包长度开始位置
 	defaultPackageBodyOffset   = 6        // 包主体开始位置
 	defaultPackageMaxLength    = 0x21000  // 最大的长度
@@ -61,6 +69,8 @@ const (
 var Logger *log4go.Logger // log 日志
 
 var rpcCallChan = make(chan interface{}, 10)
+
+var rpcCallChan1 map[string]chan interface{}
 
 /**
 创建
@@ -84,11 +94,10 @@ func New(rfg RegConfig) (*SRegister, error) {
 	}
 
 	// console 前端目录
-	if rfg.ConsolePath != nil {
+	if rfg.ConsolePath == nil {
 		rfg.ConsolePath = defaultConsolePath()
 	}
 	setConsolePath(rfg.ConsolePath)
-
 
 	if rfg.ConfigPath == "" {
 		rfg.ConfigPath = defaultConfigPath()

@@ -47,13 +47,23 @@ const (
 	CONTEXT_OFFSET = PREFIX_LENGTH + HEADER_LENGTH // 自定义上下文内容所在位置，   23
 )
 
-func getFlag(buffer []byte) (flag uint8) {
+func unPackFlag(buffer []byte) (flag uint8) {
 	binary.Read(bytes.NewBuffer(buffer[:1]) , binary.BigEndian, &flag)
 	return
 }
 
-func getVer(buffer []byte) (ver uint8) {
+func unPackVer(buffer []byte) (ver uint8) {
 	binary.Read(bytes.NewBuffer(buffer[1:2]) , binary.BigEndian, &ver)
+	return
+}
+
+func unPackWorkId(buffer []byte) (workId uint16) {
+	binary.Read(bytes.NewBuffer(buffer[CONTEXT_OFFSET:CONTEXT_OFFSET+2]) , binary.BigEndian, &workId)
+	return
+}
+
+func unPackId(buffer []byte) (workId uint16) {
+	binary.Read(bytes.NewBuffer(buffer[PREFIX_LENGTH+8:PREFIX_LENGTH+12]) , binary.BigEndian, &workId)
 	return
 }
 

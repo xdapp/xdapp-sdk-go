@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
-	"fmt"
 	"time"
 )
 
@@ -111,8 +110,8 @@ func (cli *Client) Send(data []byte) {
 连接
 */
 func (cli *Client) Connect() {
-
 	cli.OnConnect()
+
 	defer cli.Close(true)
 	if cli.Conn == nil {
 		return
@@ -133,6 +132,7 @@ func (cli *Client) Connect() {
 		//cli.onErrorCallback(err)
 		return
 	}
+	return
 }
 
 /**
@@ -166,9 +166,10 @@ func NewClient(host string, tcpConf tcpConfig) *Client {
 				return
 			}
 
-			Length := uint32(0)
+			var Length uint32
 			lengthStart := cli.packageLengthOffset
 			lengthEnd := cli.packageBodyOffset
+
 			binary.Read(bytes.NewReader(data[lengthStart:lengthEnd]), binary.BigEndian, &Length)
 
 			// 拆包
@@ -181,10 +182,9 @@ func NewClient(host string, tcpConf tcpConfig) *Client {
 	})
 
 	cli.OnReceive(func(message []byte) {
-		fmt.Println(string(message))
 
-		ver  := getVer(message)
-		flag := getFlag(message)
+		ver  := unPackVer(message)
+		flag := unPackFlag(message)
 
 		if ver != 1 {
 			Logger.Error("消息版本错误",  ver)
@@ -193,9 +193,15 @@ func NewClient(host string, tcpConf tcpConfig) *Client {
 
 		// 返回数据的模式
 		if (flag & FLAG_RESULT_MODE) == FLAG_RESULT_MODE {
+
+			Logger.Debug("返回数据的模式")
+			Logger.Debug(message)
+
 			finish := (flag & FLAG_FINISH) == FLAG_FINISH
-			//workerId := 1
-			fmt.Println(finish)
+			id := unPackId(message)
+			//workerId := unPackWorkId(message)
+			data := message[CONTEXT_OFFSET + 2 :]
+			rpcMessage(id, data, finish)
 			return
 		}
 
@@ -205,7 +211,6 @@ func NewClient(host string, tcpConf tcpConfig) *Client {
 
 		//MyRpc.context.BaseContext.Set("receiveParam")
 		rpcResponse := RpcHandle(rpcData)
-
 		cli.sendSocket(rpcResponse, headContext, ver, flag)
 	})
 
