@@ -2,7 +2,7 @@ console:
     app: demo
     name: name
     key: aaaaaaaaaa
-    host: 172.26.128.243:8900
+    host: 172.26.128.146:8900
     ssl: false
 
 version: 1

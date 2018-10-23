@@ -1,5 +1,7 @@
 package service
 
+import "reflect"
+
 type IRegister interface {
 	GetApp() string
 	GetKey() string
@@ -10,6 +12,7 @@ type IRegister interface {
 	SetServiceData(data map[string]map[string]string)
 	CloseClient()
 	ConsolePageSync()
+	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{}
 	ILogger
 }
 

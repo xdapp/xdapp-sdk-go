@@ -111,6 +111,7 @@ func (reg *SRegister) checkConsolePageDiff() [][]string {
 	sign := Md5(fmt.Sprintf("%s.%s.%s", time, list, reg.getKey()))
 	url  := reg.getUrl("check", sign, time, map[string]string{})
 
+	Logger.Info("获取console url: " + url)
 	Logger.Info("获取console前端文件: " + list)
 	Logger.Debug("获取ServiceData: " + JsonEncode(reg.ServiceData))
 

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"crypto/md5"
 	"encoding/json"
+	"encoding/binary"
 )
 
 /**
@@ -88,6 +89,10 @@ func IntToStr(data interface{}) string {
 		return strconv.Itoa(value) // int to str
 	case int64:
 		return strconv.FormatInt(value, 10) // int64 转str
+	case uint32:
+		return strconv.FormatUint(uint64(value), 10)
+	case uint64:
+		return strconv.FormatUint(value, 10)
 	default:
 		return ""
 	}
@@ -161,4 +166,17 @@ func GetFuncName() string {
 func IsExist(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil || os.IsExist(err)
+}
+
+func pack(w io.Writer, data interface{}) error {
+	return binary.Write(w, binary.BigEndian, data)
+}
+
+func getGID() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return n
 }

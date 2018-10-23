@@ -1,30 +1,25 @@
 package register
 
 import (
+	"fmt"
+	"bytes"
+	"time"
 	"reflect"
+	"strings"
+	"github.com/leesper/tao"
 	"github.com/hprose/hprose-golang/rpc"
 	"github.com/hprose/hprose-golang/io"
-	"runtime"
-	"time"
-	"strings"
 )
 
 var (
 	RpcService *rpc.TCPService		 // rpc 服务
 	RpcContext *rpc.SocketContext	 // 上下文
-	receiveBuffer  map[uint16][]byte // 接收的rpc请求数据
+	receiveBuffer  map[string][]byte // 接收的rpc请求数据
 )
 
 const (
-	callTimeout   = 10
+	callTimeout = 5
 )
-
-type SCallConfig struct {
-	Timeout int
-	AdminId uint32
-	ServiceId uint32
-	Namespace string
-}
 
 func init() {
 	RpcService = rpc.NewTCPService()
@@ -72,68 +67,75 @@ func AddInstanceMethods(obj interface{}, namespace string) {
 # 4         | 4          | 4          | 4           | 1
 # N         | N          | N          | N           | C
 */
-func (reg *SRegister) RpcCall(name string, args []reflect.Value, cfg SCallConfig) interface{} {
+func RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
 
-	if cfg.Timeout == 0 {
-		cfg.Timeout = callTimeout
+	if _, ok := cfg["serviceId"]; !ok {
+		cfg["serviceId"] = 0
+	}
+	if _, ok := cfg["adminId"]; !ok {
+		cfg["adminId"] = 0
 	}
 
-	if cfg.Namespace != "" {
-		nameSpace := strings.TrimSuffix(cfg.Namespace, "_") + "_"
-		name = nameSpace + name
-	}
+	// 唯一id
+	id    := uint32(getGID())
+	idStr := IntToStr(id)
+	fmt.Println("gid is  ", id)
 
-	id         := uint32(1)
-	custom     := Pack(uint16(0))
-	contextLen := uint8(len(custom))
-	rpcBody    := rpcEncode(name, args)
+	// PHP版本对应进程id
+	var writer = new(bytes.Buffer)
+	pack(writer, uint16(0))
+	rpcContext := writer.Bytes()
 
-	version    := StrToByte(defaultVersion)
-	length     := uint32(HEADER_LENGTH + len(custom) + len(rpcBody))
-	request    := &SRequest{
+	namespace = strings.TrimSuffix(namespace, "_") + "_"
+	name = namespace + name
+
+	socketSendChan<-setRequest(0, 1, Header{
 		0,
-		version,
-		length,
-		SHeader{
-			0,
-			cfg.ServiceId,
-			id,
-			cfg.AdminId,
-			contextLen}}
+		cfg["serviceId"],
+		id,
+		cfg["adminId"],
+		uint8(len(rpcContext)),
+	}, rpcContext, rpcEncode(name, args))
 
-	data := BytesCombine(Pack(request), custom, rpcBody)
-	reg.Client.Send(data)
+	time.Sleep(10*time.Millisecond)
+	timeId := Conn.RunAfter(callTimeout*time.Second, func(i time.Time, closer tao.WriteCloser) {
+		fmt.Println("Cancel the context")
+	})
+	defer Conn.CancelTimer(timeId)
 
-	runtime.Gosched()
-	defer delete(rpcCallChan1, string(id))
-
-	// 判断超时
-	tick := time.After(callTimeout * time.Second)
-	for {
-		select {
-		case <-tick:
-			return "请求超时"
-		case <-rpcCallChan1[string(id)]:
-			return <-rpcCallChan1[string(id)]
-		}
+	select {
+	case callReturn := <-rpcCallRespMap[idStr]:
+		delete(rpcCallRespMap, idStr)
+		fmt.Println("数量", len(rpcCallRespMap))
+		return callReturn
 	}
-
 }
 
-func rpcMessage(id uint16, data []byte, finish bool)  {
+/**
+rpc 请求返回
+ */
+func rpcReceive(flag byte, header Header, body[]byte) {
+
+	id := IntToStr(header.RequestId)
+	finish := (flag & FLAG_FINISH) == FLAG_FINISH
 
 	if finish == false {
-		receiveBuffer[id] = data
+		receiveBuffer[id] = body
+		// 30秒后清理数据
+		Conn.RunAt(time.Now().Add(30 * time.Second), func(i time.Time, closer tao.WriteCloser) {
+			delete(receiveBuffer, id)
+		}); return
 	} else if receiveBuffer[id] != nil {
-		data = BytesCombine(receiveBuffer[id], data)
+		body = BytesCombine(receiveBuffer[id], body)
 		delete(receiveBuffer, id)
 	}
-	result, error := rpcDecode(data)
 
-	if error != "" {
+	if result, error := rpcDecode(body); error != "" {
 		Logger.Warn(error)
 	} else {
-		rpcCallChan1[string(id)]<-result
+		fmt.Println("解析rpc 请求", id, result)
+		rpcCallRespMap[id] = make (chan interface{})
+		rpcCallRespMap[id]<-result
 	}
 }
 

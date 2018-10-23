@@ -111,7 +111,6 @@ func getHash(app string, name string, time string, rand string, key string) stri
 	return Sha1(fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key))
 }
 
-
 /**
 获取sha1加密
 */

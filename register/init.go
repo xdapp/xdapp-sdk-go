@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"gopkg.in/yaml.v2"
 	"github.com/alecthomas/log4go"
+	"github.com/leesper/tao"
 )
 /**
 配置
@@ -26,8 +27,8 @@ type console struct {
 
 type SRegister struct {
 	configuration
+	Conn        *tao.ClientConn				   // tcp客户端连接
 	Logger      *log4go.Logger                 // log 日志
-	Client      *Client                        // 创建的tcp客户端对象
 	RegSuccess  bool                           // 注册成功标志
 	ServiceData (map[string]map[string]string) // console 注册成功返回的页面服务器信息
 }
@@ -43,6 +44,7 @@ type RegConfig struct {
 	packageLengthOffset int      `tcp包长度位位置`
 	packageBodyOffset   int      `tcp消息体位置`
 	packageMaxLength    int      `tcp最大长度`
+	tcpVersion          int      `tcp协议版本`
 }
 
 const (
@@ -66,11 +68,12 @@ const (
 	defaultPackageMaxLength    = 0x21000  // 最大的长度
 )
 
-var Logger *log4go.Logger // log 日志
-
-var rpcCallChan = make(chan interface{}, 10)
-
-var rpcCallChan1 map[string]chan interface{}
+var (
+	Conn   *tao.ClientConn // tcp客户端连接
+	Logger *log4go.Logger // log 日志
+	socketSendChan  = make(chan Request, 10)
+	rpcCallRespMap  = make (map[string]chan interface{})
+)
 
 /**
 创建
@@ -102,23 +105,23 @@ func New(rfg RegConfig) (*SRegister, error) {
 	if rfg.ConfigPath == "" {
 		rfg.ConfigPath = defaultConfigPath()
 	}
-
 	conf, err := LoadConfig(rfg.ConfigPath)
 	if err != nil {
 		return nil, err
 	}
+	host := conf.Console.Host
 
-	client := NewClient(conf.Console.Host,
-		tcpConfig{
+	tcpConfig = sTcpConfig{
 		rfg.packageLengthOffset,
 		rfg.packageBodyOffset,
 		rfg.packageMaxLength,
-	})
+	}
+	Conn = NewClient(host)
 
 	return &SRegister{
 		conf,
+		Conn,
 		Logger,
-		client,
 		false,
 		make(map[string]map[string]string,
 		)}, nil
@@ -167,53 +170,6 @@ func defaultConfigPath() string {
 */
 func defaultConsolePath() []string {
 	return append([]string{}, defaultBaseDir() + "/console/")
-}
-
-
-func (reg *SRegister) GetApp() string {
-	return reg.Console.App
-}
-
-func (reg *SRegister) GetName() string {
-	return reg.Console.Name
-}
-func (reg *SRegister) GetVersion() string {
-	return reg.Version
-}
-func (reg *SRegister) GetKey() string {
-	return reg.Console.Key
-}
-
-func (reg *SRegister) SetRegSuccess(status bool) {
-	reg.RegSuccess = status
-}
-
-func (reg *SRegister) SetServiceData(data map[string]map[string]string) {
-	reg.ServiceData = data
-}
-
-func (reg *SRegister) GetFunctions() []string {
-	return RpcService.MethodNames
-}
-
-func (reg *SRegister) CloseClient() {
-	reg.Client.Close(reg.RegSuccess)
-}
-
-func (reg *SRegister) Info(arg0 interface{}, args ...interface{}) {
-	reg.Logger.Info(arg0, args...)
-}
-
-func (reg *SRegister) Debug(arg0 interface{}, args ...interface{}) {
-	reg.Logger.Debug(arg0, args...)
-}
-
-func (reg *SRegister) Warn(arg0 interface{}, args ...interface{}) {
-	reg.Logger.Warn(arg0, args...)
-}
-
-func (reg *SRegister) Error(arg0 interface{}, args ...interface{}) {
-	reg.Logger.Error(arg0, args...)
 }
 
 /**
