@@ -3,18 +3,18 @@ package main
 import (
 	"server-register-go/register"
 	"server-register-go/service"
-	"fmt"
+	"github.com/leesper/holmes"
+	"time"
 )
 
 /**
 测试注册服务
 */
 func main() {
+	//defer holmes.Start(holmes.LogFilePath("./log"), holmes.EveryHour, holmes.AlsoStdout).Stop()
+	defer holmes.Start().Stop()
 
-	myReg, err := register.New(register.RegConfig{
-		IsDebug: true,
-	})
-
+	myReg, err := register.New(register.RegConfig{IsDebug: true})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -27,8 +27,16 @@ func main() {
 	register.AddFunction("hello", func() string {
 		return "hello world"
 	})
+	register.PrintRpcAddFunctions()
 
-	fmt.Println(myReg.GetFunctions())
+	myReg.Conn.Start()
+	defer myReg.Conn.Close()
 
-	myReg.Connect()
+	// 测试请求rpc
+	for {
+		select {
+		case <-time.After(6 * time.Second):
+			go register.TestRpcCall()
+		}
+	}
 }

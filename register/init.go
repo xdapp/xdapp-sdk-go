@@ -2,10 +2,7 @@ package register
 
 import (
 	"fmt"
-	"log"
-	"strings"
 	"io/ioutil"
-	"path/filepath"
 	"gopkg.in/yaml.v2"
 	"github.com/alecthomas/log4go"
 	"github.com/leesper/tao"
@@ -30,7 +27,8 @@ type SRegister struct {
 	Conn        *tao.ClientConn				   // tcp客户端连接
 	Logger      *log4go.Logger                 // log 日志
 	RegSuccess  bool                           // 注册成功标志
-	ServiceData (map[string]map[string]string) // console 注册成功返回的页面服务器信息
+	ServiceData map[string]map[string]string   // console 注册成功返回的页面服务器信息
+	ConsolePath []string 					   // console前端文件目录
 }
 
 /**
@@ -45,16 +43,17 @@ type RegConfig struct {
 	packageBodyOffset   int      `tcp消息体位置`
 	packageMaxLength    int      `tcp最大长度`
 	tcpVersion          int      `tcp协议版本`
+	host                string   `tcp请求地址`
 }
 
 const (
-	defaultVersion             = "1"
-	defaultHost                = "www.xdapp.com:8900"
-	defaultSSl                 = true
-	defaultApp                 = "test"
-	defaultName                = "console"
-	defaultKey                 = ""
-	defaultLogName             = "test.log"
+	DEFAULT_VER      = "1"
+	DEFAULT_HOST     = "www.xdapp.com:8900"
+	DEFAULT_SSL      = true
+	DEFAULT_APP      = "test"
+	DEFAULT_NAME     = "console"
+	DEFAULT_KEY      = ""
+	DEFAULT_LOG_NAME = "test.log"
 
 	// 标识   | 版本    | 长度    | 头信息       | 自定义上下文  |  正文
 	// ------|--------|---------|------------|-------------|-------------
@@ -63,15 +62,14 @@ const (
 	// C     | C      | N       |            |             |
 	// length 包括 Header + Context + Body 的长度
 
-	defaultPackageLengthOffset = 2        // 包长度开始位置
-	defaultPackageBodyOffset   = 6        // 包主体开始位置
-	defaultPackageMaxLength    = 0x21000  // 最大的长度
+	DEFAULT_PACKAGE_LENGTH_OFFSET = 2        // 包长度开始位置
+	DEFAULT_PACKAGE_BODY_OFFSET   = 6        // 包主体开始位置
+	DEFAULT_PACKAGE_MAX_LENGTH    = 0x21000  // 最大的长度
 )
 
 var (
 	Conn   *tao.ClientConn // tcp客户端连接
 	Logger *log4go.Logger // log 日志
-	socketSendChan  = make(chan Request, 10)
 	rpcCallRespMap  = make (map[string]chan interface{})
 )
 
@@ -81,50 +79,48 @@ var (
 func New(rfg RegConfig) (*SRegister, error) {
 
 	if rfg.LogName == "" {
-		rfg.LogName = defaultLogName
+		rfg.LogName = DEFAULT_LOG_NAME
 	}
 	Logger = NewLog4go(rfg.IsDebug, rfg.LogName)
 
 	// tcp 配置
 	if rfg.packageLengthOffset == 0 {
-		rfg.packageLengthOffset = defaultPackageLengthOffset
+		rfg.packageLengthOffset = DEFAULT_PACKAGE_LENGTH_OFFSET
 	}
 	if rfg.packageBodyOffset == 0 {
-		rfg.packageBodyOffset = defaultPackageBodyOffset
+		rfg.packageBodyOffset = DEFAULT_PACKAGE_BODY_OFFSET
 	}
 	if rfg.packageMaxLength == 0 {
-		rfg.packageMaxLength = defaultPackageMaxLength
+		rfg.packageMaxLength = DEFAULT_PACKAGE_MAX_LENGTH
 	}
 
 	// console 前端目录
 	if rfg.ConsolePath == nil {
-		rfg.ConsolePath = defaultConsolePath()
+		rfg.ConsolePath = append([]string{}, defaultBaseDir() + "/console/")
 	}
-	setConsolePath(rfg.ConsolePath)
+	rfg.ConsolePath = checkExist(rfg.ConsolePath)
 
 	if rfg.ConfigPath == "" {
-		rfg.ConfigPath = defaultConfigPath()
+		rfg.ConfigPath = defaultBaseDir() + "/config.yml"
 	}
 	conf, err := LoadConfig(rfg.ConfigPath)
 	if err != nil {
 		return nil, err
 	}
-	host := conf.Console.Host
 
-	tcpConfig = sTcpConfig{
-		rfg.packageLengthOffset,
-		rfg.packageBodyOffset,
-		rfg.packageMaxLength,
+	if rfg.host == "" {
+		rfg.host = conf.Console.Host
 	}
-	Conn = NewClient(host)
+	Conn = NewClient(&rfg)
 
 	return &SRegister{
 		conf,
 		Conn,
 		Logger,
 		false,
-		make(map[string]map[string]string,
-		)}, nil
+		make(map[string]map[string]string),
+		rfg.ConsolePath,
+	}, nil
 }
 
 /**
@@ -141,35 +137,21 @@ func LoadConfig(filePath string) (configuration, error) {
 	}
 
 	config := configuration{
-		console{defaultHost, defaultSSl, defaultApp, defaultName, defaultKey},
-		defaultVersion}
+		console{
+			DEFAULT_HOST,
+			DEFAULT_SSL,
+			DEFAULT_APP,
+			DEFAULT_NAME,
+			DEFAULT_KEY,
+		},
+		DEFAULT_VER,
+	}
+
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return configuration{}, fmt.Errorf("解析配置文件错误:%s", err.Error())
 	}
 	return config, nil
-}
-
-/**
-默认基础目录
-*/
-func defaultBaseDir() string {
-	dir, err := filepath.Abs(filepath.Dir(""))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return strings.Replace(dir, "\\", "/", -1)
-}
-
-func defaultConfigPath() string {
-	return defaultBaseDir() + "/config.yml"
-}
-
-/**
-默认前端目录
-*/
-func defaultConsolePath() []string {
-	return append([]string{}, defaultBaseDir() + "/console/")
 }
 
 /**

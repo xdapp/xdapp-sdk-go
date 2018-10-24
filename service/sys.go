@@ -2,27 +2,15 @@ package service
 
 import (
 	"fmt"
-	"crypto/sha1"
-	"encoding/hex"
 	"time"
 	"strconv"
+
+	"crypto/sha1"
+	"encoding/hex"
 )
 
 type Sys struct {
 	Register IRegister
-}
-
-func (service *Sys) getApp() string {
-	return service.Register.GetApp()
-}
-func (service *Sys) getName() string {
-	return service.Register.GetName()
-}
-func (service *Sys) getVersion() string {
-	return service.Register.GetVersion()
-}
-func (service *Sys) getKey() string {
-	return service.Register.GetKey()
 }
 
 /**
@@ -40,10 +28,10 @@ func (service *Sys) Reg(time int64, rand string, hash string) map[string]interfa
 		return nil
 	}
 
-	app     := service.getApp()
-	key     := service.getKey()
-	name    := service.getName()
-	version := service.getVersion()
+	app     := service.Register.GetApp()
+	key     := service.Register.GetKey()
+	name    := service.Register.GetName()
+	version := service.Register.GetVersion()
 
 	time = Time()
 	hash = getHash(app, name, IntToStr(time), rand, key)
@@ -70,9 +58,9 @@ func (service *Sys) RegErr(msg string, data interface{}) {
 */
 func (service *Sys) RegOk(data map[string]map[string]string, time int, rand string, hash string) {
 
-	app  := service.getApp()
-	key  := service.getKey()
-	name := service.getName()
+	app  := service.Register.GetApp()
+	key  := service.Register.GetKey()
+	name := service.Register.GetName()
 
 	if getHash(app, name, IntToStr(time), rand, key) != hash {
 		service.Register.SetRegSuccess(false)
@@ -115,9 +103,9 @@ func getHash(app string, name string, time string, rand string, key string) stri
 获取sha1加密
 */
 func Sha1(str string) string {
-	getHash := sha1.New()
-	getHash.Write([]byte(str))
-	r := getHash.Sum(nil)
+	h := sha1.New()
+	h.Write([]byte(str))
+	r := h.Sum(nil)
 	return hex.EncodeToString(r[:])
 }
 

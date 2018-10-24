@@ -5,8 +5,6 @@ import (
 	"github.com/leesper/holmes"
 	"github.com/leesper/tao"
 	"time"
-	"fmt"
-	"reflect"
 )
 
 type sTcpConfig struct {
@@ -28,16 +26,13 @@ const (
 	FLAG_TRANSPORT   = 8 // 转发浏览器RPC请求，表明这是一个来自浏览器的请求
 )
 
-func NewClient(address string) *tao.ClientConn {
+func NewClient(rfg *RegConfig) *tao.ClientConn {
 
-	defer holmes.Start().Stop()
-
-	if address == "" {
-		holmes.Fatalln("缺少address")
+	tcpConfig = sTcpConfig{
+		rfg.packageLengthOffset,
+		rfg.packageBodyOffset,
+		rfg.packageMaxLength,
 	}
-	c := doConnect(address)
-
-	tao.Register(request.MessageNumber(), DeserializeRequest, nil)
 
 	onConnect := tao.OnConnectOption(func(c tao.WriteCloser) bool {
 		holmes.Infoln("on connect")
@@ -53,8 +48,6 @@ func NewClient(address string) *tao.ClientConn {
 
 		// 连接关闭 1秒后重连
 		Logger.Error("RPC服务连接关闭，等待重新连接")
-		time.Sleep(1 * time.Second)
-		//cli.Connect()
 	})
 
 	onMessage := tao.OnMessageOption(func(msg tao.Message, c tao.WriteCloser) {
@@ -66,13 +59,11 @@ func NewClient(address string) *tao.ClientConn {
 
 		// 返回数据的模式
 		if (flag & FLAG_RESULT_MODE) == FLAG_RESULT_MODE {
-			holmes.Infoln("返回数据的模式", msg.(Request))
-			rpcReceive(flag, header, body)
+			sendRpcReceive(flag, header, body)
 			return
 		}
-
-		//MyRpc.context.BaseContext.Set("receiveParam")
-		socketSend(flag, ver, header, context, RpcHandle(body))
+		//RpcContext.BaseContext.Set("receiveParam", msg.(Request))
+		transportRpcRequest(flag, ver, header, context, RpcHandle(body))
 	})
 
 	options := []tao.ServerOption{
@@ -80,9 +71,16 @@ func NewClient(address string) *tao.ClientConn {
 		onError,
 		onClose,
 		onMessage,
-		//tao.ReconnectOption(),
+		tao.ReconnectOption(),
 		tao.CustomCodecOption(request),
 	}
+
+	tao.Register(request.MessageNumber(), DeserializeRequest, nil)
+
+	if rfg.host == "" {
+		holmes.Fatalln("缺少address")
+	}
+	c := doConnect(rfg.host)
 
 	return tao.NewClientConn(0, c, options...)
 }
@@ -105,21 +103,7 @@ func (reg *SRegister) Connect() {
 	for {
 		select {
 		case <-time.After(6 * time.Second):
-			go testRpcCall()
-
-		case send := <-socketSendChan:
-			if err := reg.Conn.Write(send); err != nil {
-				holmes.Infoln("error", err)
-			}
+			go TestRpcCall()
 		}
 	}
-}
-
-
-func testRpcCall() {
-	time1 := time.Now().Unix()
-	fmt.Println("rpc 请求", time1)
-	args :=[]reflect.Value {reflect.ValueOf(time1)}
-	result := RpcCall("test", args, "player", make(map[string]uint32))
-	fmt.Println("rpc返回结果", result, time1)
 }

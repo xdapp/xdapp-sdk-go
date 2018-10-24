@@ -10,6 +10,9 @@ import (
 	"github.com/ddliu/go-httpclient"
 )
 
+// http请求超时
+const HTTP_TIMEOUT = 5
+
 /**
 返回结构体
 */
@@ -19,33 +22,21 @@ type RespFields struct {
 	List   [][]string // 列表
 }
 
-/**
-超时
-*/
-const timeOut = 5
+var (
+	wg sync.WaitGroup
+	vueFileList []string  //console页面文件列表
+)
 
-var wg sync.WaitGroup
-
-/**
-console页面文件列表
-*/
-var vueFileList []string
-
-/**
-前端页面目录
-  */
-var consolePath []string
-
-func setConsolePath(path []string) {
-	var descPath []string
-	// 校验前端目录
+// 校验前端目录存在
+func checkExist(path []string) []string {
+	var exist []string
 	for _, p := range path {
 		if !IsExist(p) {
 			continue
 		}
-		descPath = append(descPath, p)
+		exist = append(exist, p)
 	}
-	consolePath = descPath
+	return exist
 }
 
 /**
@@ -53,7 +44,11 @@ func setConsolePath(path []string) {
 */
 func (reg *SRegister) ConsolePageSync() {
 
-	Logger.Debug("前端文件目录：" + JsonEncode(consolePath))
+	if !reg.RegSuccess {
+		return
+	}
+
+	Logger.Debug("前端文件目录：" + JsonEncode(reg.ConsolePath))
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -71,7 +66,7 @@ func (reg *SRegister) ConsolePageSync() {
 	// 更新的文件
 	for _, f := range change {
 		fullPath := ""
-		for _, conDir := range consolePath {
+		for _, conDir := range reg.ConsolePath {
 			if PathExist(conDir + f) {
 				fullPath = conDir + f
 				break
@@ -107,7 +102,7 @@ func (reg *SRegister) checkConsolePageDiff() [][]string {
 	}
 
 	time := IntToStr(Time())
-	list := JsonEncode(getAllConsolePages())
+	list := JsonEncode(getAllConsolePages(reg.ConsolePath))
 	sign := Md5(fmt.Sprintf("%s.%s.%s", time, list, reg.getKey()))
 	url  := reg.getUrl("check", sign, time, map[string]string{})
 
@@ -115,7 +110,7 @@ func (reg *SRegister) checkConsolePageDiff() [][]string {
 	Logger.Info("获取console前端文件: " + list)
 	Logger.Debug("获取ServiceData: " + JsonEncode(reg.ServiceData))
 
-	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Post(url, map[string]string{
+	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, HTTP_TIMEOUT).Post(url, map[string]string{
 		"list": list,
 	})
 	if err != nil {
@@ -149,7 +144,7 @@ func (reg *SRegister) updateConsolePage(file string, fullPath string) {
 		fmt.Print(err)
 	}
 
-	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Put(url, strings.NewReader(string(b)))
+	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, HTTP_TIMEOUT).Put(url, strings.NewReader(string(b)))
 	if err != nil {
 		panic("更新文件执行curl错误" + err.Error())
 	}
@@ -176,7 +171,7 @@ func (reg *SRegister) deleteConsolePage(file string) {
 
 	Logger.Debug("删除请求地址：" + url)
 
-	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, timeOut).Get(url, map[string]string{})
+	response, err := httpclient.WithOption(httpclient.OPT_TIMEOUT, HTTP_TIMEOUT).Get(url, map[string]string{})
 	if err != nil {
 		panic("删除文件执行curl错误" + err.Error())
 	}
@@ -194,7 +189,7 @@ func (reg *SRegister) deleteConsolePage(file string) {
 /**
 获取所有Console用到的页面列表
 */
-func getAllConsolePages() map[string]string {
+func getAllConsolePages(consolePath []string) map[string]string {
 
 	list := make(map[string]string)
 	for _, dir := range consolePath {

@@ -16,8 +16,8 @@ func (reg *SRegister) GetKey() string {
 	return reg.Console.Key
 }
 
-func (reg *SRegister) SetRegSuccess(status bool) {
-	reg.RegSuccess = status
+func (reg *SRegister) SetRegSuccess(isReg bool) {
+	reg.RegSuccess = isReg
 }
 
 func (reg *SRegister) SetServiceData(data map[string]map[string]string) {

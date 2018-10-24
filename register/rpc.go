@@ -2,10 +2,11 @@ package register
 
 import (
 	"fmt"
-	"bytes"
 	"time"
+	"bytes"
 	"reflect"
 	"strings"
+
 	"github.com/leesper/tao"
 	"github.com/hprose/hprose-golang/rpc"
 	"github.com/hprose/hprose-golang/io"
@@ -18,7 +19,9 @@ var (
 )
 
 const (
-	callTimeout = 5
+	RPC_CALL_WORKID    = 0	 // rpc workId (PHP版本对应进程id)
+	RPC_CALL_TIMEOUT   = 5	 // rpc 请求超时时间
+	RPC_CLEAR_BUF_TIME = 30	 // rpc 清理数据时间
 )
 
 func init() {
@@ -49,6 +52,10 @@ func AddInstanceMethods(obj interface{}, namespace string) {
 	RpcService.AddInstanceMethods(obj, rpc.Options{NameSpace: namespace})
 }
 
+func PrintRpcAddFunctions() {
+	Logger.Info("已增加的rpc列表：", RpcService.MethodNames)
+}
+
 /*
 # 将请求发送给RPC连接进程
 
@@ -69,43 +76,60 @@ func AddInstanceMethods(obj interface{}, namespace string) {
 */
 func RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
 
-	if _, ok := cfg["serviceId"]; !ok {
-		cfg["serviceId"] = 0
+	var serviceId uint32
+	if _, ok := cfg["serviceId"]; ok {
+		serviceId = cfg["serviceId"]
 	}
-	if _, ok := cfg["adminId"]; !ok {
-		cfg["adminId"] = 0
+	var adminId uint32
+	if _, ok := cfg["adminId"]; ok {
+		adminId = cfg["adminId"]
 	}
 
 	// 唯一id
-	id    := uint32(getGID())
-	idStr := IntToStr(id)
-	fmt.Println("gid is  ", id)
+	reqId    := uint32(getGID())
+	reqIdStr := IntToStr(reqId)
+	fmt.Println("gid is  ", reqId)
 
 	// PHP版本对应进程id
 	var writer = new(bytes.Buffer)
-	pack(writer, uint16(0))
+	pack(writer, uint16(RPC_CALL_WORKID))
 	rpcContext := writer.Bytes()
 
-	namespace = strings.TrimSuffix(namespace, "_") + "_"
-	name = namespace + name
+	if namespace != "" {
+		namespace = strings.TrimSuffix(namespace, "_") + "_"
+		name = namespace + name
+	}
 
-	socketSendChan<-setRequest(0, 1, Header{
-		0,
-		cfg["serviceId"],
-		id,
-		cfg["adminId"],
-		uint8(len(rpcContext)),
-	}, rpcContext, rpcEncode(name, args))
+	body   := rpcEncode(name, args)
+	length := uint32(HEADER_LENGTH + len(rpcContext) + len(body))
+
+	tcpSendReq(Request{
+		Prefix{
+			0,
+			1,
+			length,
+		},
+		Header{
+			0,
+			serviceId,
+			reqId,
+			adminId,
+			uint8(len(rpcContext)),
+		},
+		rpcContext,
+		body,
+	})
 
 	time.Sleep(10*time.Millisecond)
-	timeId := Conn.RunAfter(callTimeout*time.Second, func(i time.Time, closer tao.WriteCloser) {
+
+	timeId := Conn.RunAfter(RPC_CALL_TIMEOUT*time.Second, func(i time.Time, closer tao.WriteCloser) {
 		fmt.Println("Cancel the context")
 	})
 	defer Conn.CancelTimer(timeId)
 
 	select {
-	case callReturn := <-rpcCallRespMap[idStr]:
-		delete(rpcCallRespMap, idStr)
+	case callReturn := <-rpcCallRespMap[reqIdStr]:
+		delete(rpcCallRespMap, reqIdStr)
 		fmt.Println("数量", len(rpcCallRespMap))
 		return callReturn
 	}
@@ -114,7 +138,7 @@ func RpcCall(name string, args []reflect.Value, namespace string, cfg map[string
 /**
 rpc 请求返回
  */
-func rpcReceive(flag byte, header Header, body[]byte) {
+func sendRpcReceive(flag byte, header Header, body[]byte) {
 
 	id := IntToStr(header.RequestId)
 	finish := (flag & FLAG_FINISH) == FLAG_FINISH
@@ -122,7 +146,7 @@ func rpcReceive(flag byte, header Header, body[]byte) {
 	if finish == false {
 		receiveBuffer[id] = body
 		// 30秒后清理数据
-		Conn.RunAt(time.Now().Add(30 * time.Second), func(i time.Time, closer tao.WriteCloser) {
+		Conn.RunAt(time.Now().Add(RPC_CLEAR_BUF_TIME * time.Second), func(i time.Time, closer tao.WriteCloser) {
 			delete(receiveBuffer, id)
 		}); return
 	} else if receiveBuffer[id] != nil {
@@ -130,12 +154,11 @@ func rpcReceive(flag byte, header Header, body[]byte) {
 		delete(receiveBuffer, id)
 	}
 
-	if result, error := rpcDecode(body); error != "" {
+	if resp, error := rpcDecode(body); error != "" {
 		Logger.Warn(error)
 	} else {
-		fmt.Println("解析rpc 请求", id, result)
 		rpcCallRespMap[id] = make (chan interface{})
-		rpcCallRespMap[id]<-result
+		rpcCallRespMap[id]<-resp
 	}
 }
 
@@ -169,4 +192,14 @@ func rpcDecode(data []byte) (interface{}, string) {
 	default:
 		return nil, "RPC 系统调用收到一个未定义的方法返回: " + string(tag) + reader.ReadString()
 	}
+}
+
+/**
+测试rpc
+ */
+func TestRpcCall() {
+	now := time.Now().Unix()
+	args :=[]reflect.Value {reflect.ValueOf(now)}
+	result := RpcCall("test", args, "player", make(map[string]uint32))
+	fmt.Println("rpc返回结果", result, now)
 }

@@ -13,6 +13,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"encoding/binary"
+	"log"
 )
 
 /**
@@ -179,4 +180,15 @@ func getGID() uint64 {
 	b = b[:bytes.IndexByte(b, ' ')]
 	n, _ := strconv.ParseUint(string(b), 10, 64)
 	return n
+}
+
+/**
+默认基础目录
+*/
+func defaultBaseDir() string {
+	dir, err := filepath.Abs(filepath.Dir(""))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strings.Replace(dir, "\\", "/", -1)
 }
