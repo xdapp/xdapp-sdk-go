@@ -7,9 +7,8 @@ import (
 	"github.com/alecthomas/log4go"
 	"github.com/leesper/tao"
 )
-/**
-配置
-*/
+
+// 配置文件结构
 type configuration struct {
 	Console console
 	Version string
@@ -31,14 +30,17 @@ type SRegister struct {
 	ConsolePath []string 					   // console前端文件目录
 }
 
-/**
-可配置参数
-*/
+// 可配置参数
 type RegConfig struct {
 	IsDebug             bool     `是否debug模式`
 	LogName             string   `log文件名`
 	ConfigPath          string   `配置文件路径`
 	ConsolePath         []string `console前端文件目录`
+	TcpConfig
+}
+
+// tcp配置
+type TcpConfig struct {
 	packageLengthOffset int      `tcp包长度位位置`
 	packageBodyOffset   int      `tcp消息体位置`
 	packageMaxLength    int      `tcp最大长度`
@@ -69,7 +71,7 @@ const (
 
 var (
 	Conn   *tao.ClientConn // tcp客户端连接
-	Logger *log4go.Logger // log 日志
+	Logger *log4go.Logger  // log 日志
 	rpcCallRespMap  = make (map[string]chan interface{})
 )
 
@@ -111,7 +113,10 @@ func New(rfg RegConfig) (*SRegister, error) {
 	if rfg.host == "" {
 		rfg.host = conf.Console.Host
 	}
-	Conn = NewClient(&rfg)
+
+	tcpConfig = rfg.TcpConfig
+
+	Conn = NewClient()
 
 	return &SRegister{
 		conf,

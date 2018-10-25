@@ -27,18 +27,6 @@ var (
 	vueFileList []string  //console页面文件列表
 )
 
-// 校验前端目录存在
-func checkExist(path []string) []string {
-	var exist []string
-	for _, p := range path {
-		if !IsExist(p) {
-			continue
-		}
-		exist = append(exist, p)
-	}
-	return exist
-}
-
 /**
 同步Console页面文件
 */

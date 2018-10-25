@@ -2,20 +2,13 @@ package register
 
 import (
 	"net"
-	"github.com/leesper/holmes"
-	"github.com/leesper/tao"
 	"time"
+	"github.com/leesper/tao"
 )
-
-type sTcpConfig struct {
-	packageLengthOffset int    // 长度位移位
-	packageBodyOffset   int    // length 包括 Header + Context + Body 的长度
-	packageMaxLength    int    // 最大的长度
-}
 
 var (
 	request Request
-	tcpConfig sTcpConfig
+	tcpConfig TcpConfig
 )
 
 // tcp标志位
@@ -26,26 +19,20 @@ const (
 	FLAG_TRANSPORT   = 8 // 转发浏览器RPC请求，表明这是一个来自浏览器的请求
 )
 
-func NewClient(rfg *RegConfig) *tao.ClientConn {
-
-	tcpConfig = sTcpConfig{
-		rfg.packageLengthOffset,
-		rfg.packageBodyOffset,
-		rfg.packageMaxLength,
+func NewClient() *tao.ClientConn {
+	if tcpConfig.host == "" {
+		Logger.Error("缺少tcp host")
 	}
+	c := doConnect(tcpConfig.host)
 
 	onConnect := tao.OnConnectOption(func(c tao.WriteCloser) bool {
-		holmes.Infoln("on connect")
 		return true
 	})
 
 	onError := tao.OnErrorOption(func(c tao.WriteCloser) {
-		holmes.Infoln("on error")
 	})
 
 	onClose := tao.OnCloseOption(func(c tao.WriteCloser) {
-		holmes.Infoln("on close")
-
 		// 连接关闭 1秒后重连
 		Logger.Error("RPC服务连接关闭，等待重新连接")
 	})
@@ -76,22 +63,15 @@ func NewClient(rfg *RegConfig) *tao.ClientConn {
 	}
 
 	tao.Register(request.MessageNumber(), DeserializeRequest, nil)
-
-	if rfg.host == "" {
-		holmes.Fatalln("缺少address")
-	}
-	c := doConnect(rfg.host)
-
 	return tao.NewClientConn(0, c, options...)
 }
 
-func doConnect(address string) net.Conn {
-	c, err := net.Dial("tcp", address)
+func doConnect(host string) net.Conn {
+	c, err := net.Dial("tcp", host)
 	if err != nil {
-		holmes.Errorln(err)
 		Logger.Error("RPC服务连接错误，等待重新连接" + err.Error())
 		time.Sleep(1 * time.Second)
-		return doConnect(address)
+		return doConnect(host)
 	}
 	return c
 }

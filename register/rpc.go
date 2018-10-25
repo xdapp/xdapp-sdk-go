@@ -30,16 +30,12 @@ func init() {
 	RpcContext.InitServiceContext(RpcService)
 }
 
-/**
-屏蔽列表输出
-*/
+// 屏蔽列表输出
 func DoFunctionList() string {
 	return "Fa{}z"
 }
 
-/**
-执行结果
-*/
+// 执行结果
 func RpcHandle(data []byte) []byte {
 	return RpcService.Handle(data, RpcContext)
 }
@@ -135,9 +131,7 @@ func RpcCall(name string, args []reflect.Value, namespace string, cfg map[string
 	}
 }
 
-/**
-rpc 请求返回
- */
+// rpc 请求返回
 func sendRpcReceive(flag byte, header Header, body[]byte) {
 
 	id := IntToStr(header.RequestId)
@@ -175,9 +169,7 @@ func rpcEncode(name string, args []reflect.Value) []byte {
 	return writer.Bytes()
 }
 
-/**
-rpc反序列化
- */
+// rpc反序列化
 func rpcDecode(data []byte) (interface{}, string) {
 	reader := io.AcquireReader(data, false)
 	defer io.ReleaseReader(reader)
@@ -194,9 +186,7 @@ func rpcDecode(data []byte) (interface{}, string) {
 	}
 }
 
-/**
-测试rpc
- */
+// 测试rpc
 func TestRpcCall() {
 	now := time.Now().Unix()
 	args :=[]reflect.Value {reflect.ValueOf(now)}

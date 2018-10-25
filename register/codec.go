@@ -3,13 +3,13 @@ package register
 import (
 	"io"
 	"net"
+	"fmt"
 	"bytes"
 	"errors"
 
 	"encoding/binary"
 
 	"github.com/leesper/tao"
-	"github.com/leesper/holmes"
 )
 
 //  标识   | 版本    | 长度    | 头信息       | 自定义内容    |  正文
@@ -112,7 +112,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			ec <- err
 			close(bc)
 			close(ec)
-			holmes.Debugln("read failed")
+			Logger.Warn("read failed")
 			return
 		}
 		bc <- buf
@@ -138,8 +138,9 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 		}
 
 		if prefix.Length > uint32(tcpConfig.packageMaxLength) {
-			holmes.Errorf("message(type %d) has bytes(%d) beyond max %d\n", request.Ver, prefix.Length, tcpConfig.packageMaxLength)
-			return nil, tao.ErrBadData
+			err := fmt.Sprintf("数据长度为%d, 大于最大值%d", prefix.Length, tcpConfig.packageMaxLength)
+			Logger.Error(err)
+			return nil, errors.New(err)
 		}
 
 		var header Header
@@ -177,19 +178,6 @@ func (req Request) Encode(msg tao.Message) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
-}
-
-func setRequest(flag byte, ver byte, header Header, context []byte, body[]byte) Request {
-	return Request{
-		Prefix{
-			flag,
-			ver,
-			uint32(HEADER_LENGTH + len(context) + len(body)),
-		},
-		header,
-		context,
-		body,
-	}
 }
 
 /**
@@ -237,6 +225,6 @@ func transportRpcRequest(flag byte, ver byte, header Header, context []byte, dat
 
 func tcpSendReq(request Request) {
 	if err := Conn.Write(request); err != nil {
-		holmes.Infoln("error", err)
+		Logger.Error("error", err)
 	}
 }

@@ -182,13 +182,23 @@ func getGID() uint64 {
 	return n
 }
 
-/**
-默认基础目录
-*/
+// 默认基础目录
 func defaultBaseDir() string {
 	dir, err := filepath.Abs(filepath.Dir(""))
 	if err != nil {
 		log.Fatal(err)
 	}
 	return strings.Replace(dir, "\\", "/", -1)
+}
+
+// 校验前端目录存在
+func checkExist(path []string) []string {
+	var exist []string
+	for _, p := range path {
+		if !IsExist(p) {
+			continue
+		}
+		exist = append(exist, p)
+	}
+	return exist
 }
