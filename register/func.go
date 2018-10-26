@@ -49,5 +49,20 @@ func (reg *SRegister) Error(arg0 interface{}, args ...interface{}) {
 }
 
 func (reg *SRegister) RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
-	return RpcCall(name, args, namespace, cfg)
+	var serviceId uint32
+	if _, ok := cfg["serviceId"]; ok {
+		serviceId = cfg["serviceId"]
+	}
+	var adminId uint32
+	if _, ok := cfg["adminId"]; ok {
+		adminId = cfg["adminId"]
+	}
+
+	rpc := NewRpcCall(RpcCall{
+		nameSpace: namespace,
+		serviceId: serviceId,
+		adminId: adminId,
+	})
+
+	return rpc.Call(name, args)
 }

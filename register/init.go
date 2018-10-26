@@ -9,7 +9,7 @@ import (
 )
 
 // 配置文件结构
-type configuration struct {
+type Config struct {
 	Console console
 	Version string
 }
@@ -22,7 +22,7 @@ type console struct {
 }
 
 type SRegister struct {
-	configuration
+	Config
 	Conn        *tao.ClientConn				   // tcp客户端连接
 	Logger      *log4go.Logger                 // log 日志
 	RegSuccess  bool                           // 注册成功标志
@@ -80,9 +80,6 @@ var (
 */
 func New(rfg RegConfig) (*SRegister, error) {
 
-	if rfg.LogName == "" {
-		rfg.LogName = DEFAULT_LOG_NAME
-	}
 	Logger = NewLog4go(rfg.IsDebug, rfg.LogName)
 
 	// tcp 配置
@@ -105,6 +102,7 @@ func New(rfg RegConfig) (*SRegister, error) {
 	if rfg.ConfigPath == "" {
 		rfg.ConfigPath = defaultBaseDir() + "/config.yml"
 	}
+
 	conf, err := LoadConfig(rfg.ConfigPath)
 	if err != nil {
 		return nil, err
@@ -114,13 +112,9 @@ func New(rfg RegConfig) (*SRegister, error) {
 		rfg.host = conf.Console.Host
 	}
 
-	tcpConfig = rfg.TcpConfig
-
-	Conn = NewClient()
-
 	return &SRegister{
 		conf,
-		Conn,
+		NewClient(rfg),
 		Logger,
 		false,
 		make(map[string]map[string]string),
@@ -131,17 +125,17 @@ func New(rfg RegConfig) (*SRegister, error) {
 /**
 设置配置
 */
-func LoadConfig(filePath string) (configuration, error) {
+func LoadConfig(filePath string) (Config, error) {
 
 	if !PathExist(filePath) {
-		return configuration{}, fmt.Errorf("配置文件:%s 不存在", filePath)
+		return Config{}, fmt.Errorf("配置文件:%s 不存在", filePath)
 	}
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		return configuration{}, fmt.Errorf("读取配置文件错误:%s", err.Error())
+		return Config{}, fmt.Errorf("读取配置文件错误:%s", err.Error())
 	}
 
-	config := configuration{
+	config := Config{
 		console{
 			DEFAULT_HOST,
 			DEFAULT_SSL,
@@ -154,7 +148,7 @@ func LoadConfig(filePath string) (configuration, error) {
 
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		return configuration{}, fmt.Errorf("解析配置文件错误:%s", err.Error())
+		return Config{}, fmt.Errorf("解析配置文件错误:%s", err.Error())
 	}
 	return config, nil
 }
@@ -177,6 +171,9 @@ func (reg *SRegister) getHost() string {
 log4go对象设置
 */
 func NewLog4go(isDebug bool, logName string) *log4go.Logger {
+	if logName == "" {
+		logName = DEFAULT_LOG_NAME
+	}
 
 	log4 := make(log4go.Logger)
 	cw := log4go.NewConsoleLogWriter()

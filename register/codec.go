@@ -104,10 +104,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 	errorChan := make(chan error)
 
 	go func(bc chan []byte, ec chan error) {
-
-		buf := make([]byte, PREFIX_LENGTH)
-		_, err := io.ReadFull(raw, buf)
-
+		buf, err := readBytesByLength(raw, PREFIX_LENGTH)
 		if err != nil {
 			ec <- err
 			close(bc)
@@ -144,31 +141,34 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 		}
 
 		var header Header
-		hdBytes := make([]byte, HEADER_LENGTH)
-		_, err = io.ReadFull(raw, hdBytes)
+		headBytes, err := readBytesByLength(raw, HEADER_LENGTH)
 		if err != nil {
 			return nil, err
 		}
-		hdBuf := bytes.NewReader(hdBytes)
-		if err = binary.Read(hdBuf, binary.BigEndian, &header); err != nil {
+		headBuf := bytes.NewReader(headBytes)
+		if err = binary.Read(headBuf, binary.BigEndian, &header); err != nil {
 			return nil, err
 		}
 
 		ctxLen := int(header.ContextLength)
-		ctxBytes := make([]byte, ctxLen)
-		_, err = io.ReadFull(raw, ctxBytes)
+		context, err := readBytesByLength(raw, ctxLen)
 		if err != nil {
 			return nil, err
 		}
 
-		bodyBytes := make([]byte, int(prefix.Length) - HEADER_LENGTH - ctxLen)
-		_, err = io.ReadFull(raw, bodyBytes)
+		body, err := readBytesByLength(raw, int(prefix.Length) - HEADER_LENGTH - ctxLen)
 		if err != nil {
 			return nil, err
 		}
 
-		return Request{prefix,header,ctxBytes,bodyBytes}, nil
+		return Request{prefix,header,context,body}, nil
 	}
+}
+
+func readBytesByLength(r io.Reader, len int) ([]byte, error) {
+	byte := make([]byte, len)
+	_, err := io.ReadFull(r, byte)
+	return byte, err
 }
 
 // Encode encodes the message into bytes data.
@@ -183,48 +183,42 @@ func (req Request) Encode(msg tao.Message) ([]byte, error) {
 /**
 转发消息到其它服务
  */
-func transportRpcRequest(flag byte, ver byte, header Header, context []byte, data[]byte) {
-
+func transportRpcRequest(flag byte, ver byte, header Header, context []byte, body[]byte) {
 	flag = flag | FLAG_RESULT_MODE
-	dataLength := len(data)
-
+	dataLength := len(body)
 	if dataLength < SEND_CHUNK_LENGTH {
-		tcpSendReq(Request{
-			Prefix{
-				uint8(flag | FLAG_FINISH),
-				ver,
-				uint32(HEADER_LENGTH + len(context) + dataLength),
-			},
-			header,
-			context,
-			data,
-		})
+		prefix := Prefix{
+			uint8(flag | FLAG_FINISH),
+			ver,
+			getRequestLength(context, body),
+		}
+		sendRequest(Request{prefix, header, context, body})
 		return
 	}
 
 	// 大于 拆包分段发送
 	for i := 0; i < dataLength; i += SEND_CHUNK_LENGTH {
-		chunkLen := Min(SEND_CHUNK_LENGTH, dataLength-i)
-		chunk := data[i:chunkLen]
-		if dataLength-i == chunkLen {
+		chunkLen := Min(SEND_CHUNK_LENGTH, dataLength - i)
+		if dataLength - i == chunkLen {
 			flag |= FLAG_FINISH
 		}
 
-		tcpSendReq(Request{
-			Prefix{
-				uint8(flag),
-				ver,
-				uint32(HEADER_LENGTH + len(context) + chunkLen),
-			},
-			header,
-			context,
-			chunk,
-		})
+		chunk  := body[i:chunkLen]
+		prefix := Prefix{
+			uint8(flag),
+			ver,
+			getRequestLength(context, chunk),
+		}
+		sendRequest(Request{prefix, header, context, chunk})
 	}
 }
 
-func tcpSendReq(request Request) {
+func sendRequest(request Request) {
 	if err := Conn.Write(request); err != nil {
 		Logger.Error("error", err)
 	}
+}
+
+func getRequestLength(context []byte, body []byte) uint32 {
+	return uint32(HEADER_LENGTH + len(context) + len(body))
 }

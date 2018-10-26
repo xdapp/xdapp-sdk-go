@@ -19,7 +19,9 @@ const (
 	FLAG_TRANSPORT   = 8 // 转发浏览器RPC请求，表明这是一个来自浏览器的请求
 )
 
-func NewClient() *tao.ClientConn {
+func NewClient(rfg RegConfig) *tao.ClientConn {
+
+	tcpConfig = rfg.TcpConfig
 	if tcpConfig.host == "" {
 		Logger.Error("缺少tcp host")
 	}
@@ -63,7 +65,8 @@ func NewClient() *tao.ClientConn {
 	}
 
 	tao.Register(request.MessageNumber(), DeserializeRequest, nil)
-	return tao.NewClientConn(0, c, options...)
+	Conn = tao.NewClientConn(0, c, options...)
+	return Conn
 }
 
 func doConnect(host string) net.Conn {
@@ -79,7 +82,6 @@ func doConnect(host string) net.Conn {
 func (reg *SRegister) Connect() {
 	reg.Conn.Start()
 	defer reg.Conn.Close()
-
 	for {
 		select {
 		case <-time.After(6 * time.Second):
