@@ -9,8 +9,10 @@ import (
 	"github.com/leesper/tao"
 )
 
-// 接收的rpc请求数据
-var receiveBuffer  map[string][]byte
+var (
+	receiveBuffer  map[string][]byte
+	callReceiveChanMap = make (map[string]chan interface{})
+)
 
 const (
 	RPC_CALL_WORKID    = 0	 // rpc workId (PHP版本对应进程id)
@@ -62,7 +64,6 @@ func (c *RpcCall) Call(name string, args []reflect.Value) interface{} {
 
 	// 唯一id
 	reqId    := uint32(getGID())
-	reqIdStr := IntToStr(reqId)
 	fmt.Println("gid is  ", reqId)
 
 	// PHP版本对应进程id
@@ -97,10 +98,11 @@ func (c *RpcCall) Call(name string, args []reflect.Value) interface{} {
 	})
 	defer Conn.CancelTimer(timeId)
 
+	reqIdStr := IntToStr(reqId)
 	select {
-	case result := <-rpcCallRespMap[reqIdStr]:
-		delete(rpcCallRespMap, reqIdStr)
-		Logger.Info("数量", len(rpcCallRespMap))
+	case result := <-callReceiveChanMap[reqIdStr]:
+		delete(callReceiveChanMap, reqIdStr)
+		Logger.Info("数量", len(callReceiveChanMap))
 		return result
 	}
 }
@@ -125,8 +127,8 @@ func sendRpcReceive(flag byte, header Header, body[]byte) {
 	if resp, error := rpcDecode(body); error != "" {
 		Logger.Warn(error)
 	} else {
-		rpcCallRespMap[id] = make (chan interface{})
-		rpcCallRespMap[id]<-resp
+		callReceiveChanMap[id] = make (chan interface{})
+		callReceiveChanMap[id]<-resp
 	}
 }
 
