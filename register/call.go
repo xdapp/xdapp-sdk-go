@@ -3,10 +3,10 @@ package register
 import (
 	"fmt"
 	"reflect"
-	"bytes"
 	"strings"
 	"time"
 	"github.com/leesper/tao"
+	"encoding/binary"
 )
 
 var (
@@ -61,22 +61,20 @@ func (c *RpcCall) SetTimeOut(timeOut uint32) {
 # N         | N          | N          | N           | C
 */
 func (c *RpcCall) Call(name string, args []reflect.Value) interface{} {
-
-	// 唯一id
-	reqId    := uint32(getGID())
-	fmt.Println("gid is  ", reqId)
-
-	// PHP版本对应进程id
-	var writer = new(bytes.Buffer)
-	pack(writer, uint16(RPC_CALL_WORKID))
-	rpcContext := writer.Bytes()
-
 	if c.nameSpace != "" {
 		c.nameSpace = strings.TrimSuffix(c.nameSpace, "_") + "_"
 		name = c.nameSpace + name
 	}
+	body := rpcEncode(name, args)
 
-	body   := rpcEncode(name, args)
+	// 唯一id
+	reqId    := uint32(getGID())
+	fmt.Println("gid is", reqId)
+
+	// PHP版本对应进程id
+	var rpcContext []byte = make([]byte, 2)
+	binary.BigEndian.PutUint16(rpcContext, uint16(RPC_CALL_WORKID))
+
 	prefix := Prefix{
 		0,
 		1,
@@ -102,7 +100,7 @@ func (c *RpcCall) Call(name string, args []reflect.Value) interface{} {
 	select {
 	case result := <-callReceiveChanMap[reqIdStr]:
 		delete(callReceiveChanMap, reqIdStr)
-		Logger.Info("数量", len(callReceiveChanMap))
+		Logger.Info(fmt.Sprintf("数量 %d", len(callReceiveChanMap)))
 		return result
 	}
 }

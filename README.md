@@ -12,10 +12,23 @@ go get hub000.xindong.com/core-system/server-register-go
 
 功能
 ----------
-    1、rpc注册service文件夹中服务 （区分sys系统服务 + 普通服务）
-    2、连接到consoloe tcp服务 执行reg
-    3、成注册登记 回调reg_ok
-    3、同步更新console 目录下vue文件
+- rpc注册service文件夹中服务 （区分sys系统服务 + 普通服务）
+- tcp连接到console服务 执行reg检验参数
+- 成注册登记 回调reg_ok
+- 检查console目录的前端文件 + 同步更新
+- 调取rpc服务 rpc.Call xxx
+> 如请求console player_test方法
+
+```go
+now := time.Now().Unix()
+args :=[]reflect.Value {reflect.ValueOf(now)}
+	
+rpc := NewRpcCall(RpcCall{
+        nameSpace: "player",
+})
+result := rpc.Call("test", args)
+
+```
 
 
 Example
@@ -24,36 +37,39 @@ Example
 package main
 
 import (
-	"hub000.xindong.com/core-system/server-register-go/register"
-	"hub000.xindong.com/core-system/server-register-go/service"
+	"server-register-go/register"
+	"server-register-go/service"
+	"time"
 )
-
 
 /**
 测试注册服务
- */
+*/
 func main() {
-
-	myReg, err := register.New(register.RegConfig{
-		IsDebug: false,
-	})
-
+	sReg, err := register.New(register.RegConfig{IsDebug: true})
 	if err != nil {
 		panic(err.Error())
 	}
 
 	// 加载rpc 方法
-	register.LoadService("sys", service.NewSysService(myReg))
-
-	// 增加扩展类
-	register.LoadService("test", service.NewTestService("test service"))
+	register.AddInstanceMethods(&service.Sys{sReg}, "sys")
+	register.AddInstanceMethods(&service.Test{"test service"}, "test")
 
 	// 增加单个方法
-	register.MyRpc.AddFunction("hello", func() string {
+	register.AddFunction("hello", func() string {
 		return "hello world"
 	})
+	register.PrintRpcAddFunctions()
 
-	myReg.CreateServiceSocket()
+	sReg.Conn.Start()
+	defer sReg.Conn.Close()
+
+	for {
+		select {
+		case <-time.After(6 * time.Second):
+			go register.TestRpcCall()
+		}
+	}
 }
 
 ```
