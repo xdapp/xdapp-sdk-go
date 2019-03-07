@@ -33,7 +33,6 @@ func main() {
 	hproseService.AddFunction("hello", func() string {
 		return "hello world"
 	})
-	register.PrintRpcAddFunctions()
 
 	sReg.Connect()
 	defer sReg.Conn.Close()

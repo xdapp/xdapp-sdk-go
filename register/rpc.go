@@ -31,7 +31,7 @@ func GetHproseAddedFunc() []string {
 	return HproseService.MethodNames
 }
 
-func PrintRpcAddFunctions() {
+func outputAddedFunctions() {
 	Logger.Info("已增加的rpc列表：", GetHproseAddedFunc())
 }
 

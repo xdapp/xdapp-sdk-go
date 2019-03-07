@@ -82,5 +82,6 @@ func doConnect(host string) net.Conn {
 
 func (reg *SRegister) Connect() {
 	reg.Conn.Start()
+	outputAddedFunctions()
 	<- startChan
 }
