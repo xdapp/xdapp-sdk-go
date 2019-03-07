@@ -184,8 +184,10 @@ func (req Request) Encode(msg tao.Message) ([]byte, error) {
 转发消息到其它服务
  */
 func transportRpcRequest(flag byte, ver byte, header Header, context []byte, body[]byte) {
+
 	flag = flag | FLAG_RESULT_MODE
 	dataLength := len(body)
+
 	if dataLength < SEND_CHUNK_LENGTH {
 		prefix := Prefix{
 			uint8(flag | FLAG_FINISH),
@@ -198,12 +200,13 @@ func transportRpcRequest(flag byte, ver byte, header Header, context []byte, bod
 
 	// 大于 拆包分段发送
 	for i := 0; i < dataLength; i += SEND_CHUNK_LENGTH {
+
 		chunkLen := Min(SEND_CHUNK_LENGTH, dataLength - i)
 		if dataLength - i == chunkLen {
 			flag |= FLAG_FINISH
 		}
 
-		chunk  := body[i:chunkLen]
+		chunk := body[i:chunkLen]
 		prefix := Prefix{
 			uint8(flag),
 			ver,

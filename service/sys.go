@@ -18,12 +18,10 @@ type Sys struct {
 */
 func (service *Sys) Reg(time int64, rand string, hash string) map[string]interface{} {
 
-	// 验证hash
 	if Sha1(fmt.Sprintf("%s.%s.%s", IntToStr(time), rand, "xdapp.com")) != hash {
 		return nil
 	}
 
-	// 超时
 	if Time() - time > 180 {
 		return nil
 	}

@@ -25,6 +25,7 @@ func NewClient(rfg RegConfig) *tao.ClientConn {
 	if tcpConfig.host == "" {
 		Logger.Error("缺少tcp host")
 	}
+
 	c := doConnect(tcpConfig.host)
 
 	onConnect := tao.OnConnectOption(func(c tao.WriteCloser) bool {

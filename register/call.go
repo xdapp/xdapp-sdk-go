@@ -52,7 +52,7 @@ func (c *RpcCall) SetTimeOut(timeOut uint32) {
 # C     | C      | N       |            |             |
 #
 #
-# 其中 Header 部分包括
+# 其中 Header 部分包括RPC服务连接关闭，等待重新连接
 #
 # AppId     | 服务ID      | rpc请求序号  | 管理员ID      | 自定义信息长度
 # ----------|------------|------------|-------------|-----------------
@@ -131,13 +131,13 @@ func sendRpcReceive(flag byte, header Header, body[]byte) {
 }
 
 // 测试rpc
-func TestRpcCall() {
+func TestRpcPing() {
 	now := time.Now().Unix()
 	args :=[]reflect.Value {reflect.ValueOf(now)}
 
 	rpc := NewRpcCall(RpcCall{
-		nameSpace: "player",
+		nameSpace: "test",
 	})
-	result := rpc.Call("test", args)
+	result := rpc.Call("ping", args)
 	fmt.Println("rpc返回结果", result, now)
 }

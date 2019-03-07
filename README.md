@@ -17,16 +17,18 @@ go get hub000.xindong.com/core-system/server-register-go
 - 成注册登记 回调reg_ok
 - 检查console目录的前端文件 + 同步更新
 - 调取rpc服务 rpc.Call xxx
+
 > 如请求console player_test方法
 
 ```go
-now := time.Now().Unix()
-args :=[]reflect.Value {reflect.ValueOf(now)}
-	
-rpc := NewRpcCall(RpcCall{
-        nameSpace: "player",
-})
-result := rpc.Call("test", args)
+    now := time.Now().Unix()
+	args :=[]reflect.Value {reflect.ValueOf(now)}
+
+	rpc := NewRpcCall(RpcCall{
+		nameSpace: "test",
+	})
+	result := rpc.Call("ping", args)
+	fmt.Println("rpc返回结果", result)
 
 ```
 

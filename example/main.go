@@ -31,7 +31,7 @@ func main() {
 	for {
 		select {
 		case <-time.After(6 * time.Second):
-			go register.TestRpcCall()
+			go register.TestRpcPing()
 		}
 	}
 }
