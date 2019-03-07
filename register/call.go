@@ -1,7 +1,6 @@
 package register
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -11,35 +10,39 @@ import (
 
 var (
 	receiveBuffer  map[string][]byte
-	callReceiveChanMap = make (map[string]chan interface{})
+	receiveChanMap = make (map[string]chan interface{})
 )
 
 const (
 	RPC_CALL_WORKID    = 0	 // rpc workId (PHP版本对应进程id)
-	RPC_CALL_TIMEOUT   = 10	 // rpc 请求超时时间
+	RPC_CALL_TimeOut   = 10	 // rpc 请求超时时间
 	RPC_CLEAR_BUF_TIME = 30	 // rpc 清理数据时间
 )
 
-type RpcCall struct {
-	serviceId uint32
-	adminId uint32
-	nameSpace string
-	timeOut uint32
+type RpcClient struct {
+	ServiceId uint32
+	AdminId uint32
+	NameSpace string
+	TimeOut uint32
 }
 
-func NewRpcCall(c RpcCall) *RpcCall {
-	if c.timeOut == 0 {
-		c.timeOut = RPC_CALL_TIMEOUT
+func NewRpcClient(c RpcClient) *RpcClient {
+	if c.TimeOut == 0 {
+		c.TimeOut = RPC_CALL_TimeOut
 	}
 	return &c
 }
 
-func (c *RpcCall) SetAdminId(adminId uint32) {
-	c.adminId = adminId
+func (c *RpcClient) SetAdminId(AdminId uint32) {
+	c.AdminId = AdminId
 }
 
-func (c *RpcCall) SetTimeOut(timeOut uint32) {
-	c.timeOut = timeOut
+func (c *RpcClient) SetTimeOut(TimeOut uint32) {
+	c.TimeOut = TimeOut
+}
+
+func (c *RpcClient) SetNameSpace(NameSpace string) {
+	c.NameSpace = NameSpace
 }
 
 /*
@@ -60,16 +63,15 @@ func (c *RpcCall) SetTimeOut(timeOut uint32) {
 # 4         | 4          | 4          | 4           | 1
 # N         | N          | N          | N           | C
 */
-func (c *RpcCall) Call(name string, args []reflect.Value) interface{} {
-	if c.nameSpace != "" {
-		c.nameSpace = strings.TrimSuffix(c.nameSpace, "_") + "_"
-		name = c.nameSpace + name
+func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
+	if c.NameSpace != "" {
+		c.NameSpace = strings.TrimSuffix(c.NameSpace, "_") + "_"
+		name = c.NameSpace + name
 	}
 	body := rpcEncode(name, args)
 
 	// 唯一id
-	reqId    := uint32(getGID())
-	fmt.Println("gid is", reqId)
+	reqId := uint32(getGID())
 
 	// PHP版本对应进程id
 	var rpcContext []byte = make([]byte, 2)
@@ -82,25 +84,24 @@ func (c *RpcCall) Call(name string, args []reflect.Value) interface{} {
 	}
 	header := Header{
 		0,
-		c.serviceId,
+		c.ServiceId,
 		reqId,
-		c.adminId,
+		c.AdminId,
 		uint8(len(rpcContext)),
 	}
 	sendRequest(Request{prefix, header, rpcContext, body})
 
 	time.Sleep(10 * time.Millisecond)
 
-	timeId := Conn.RunAfter(time.Duration(c.timeOut) * time.Second, func(i time.Time, closer tao.WriteCloser) {
+	timeId := Conn.RunAfter(time.Duration(c.TimeOut) * time.Second, func(i time.Time, closer tao.WriteCloser) {
 		Logger.Info("Cancel the context")
 	})
 	defer Conn.CancelTimer(timeId)
 
 	reqIdStr := IntToStr(reqId)
 	select {
-	case result := <-callReceiveChanMap[reqIdStr]:
-		delete(callReceiveChanMap, reqIdStr)
-		Logger.Info(fmt.Sprintf("数量 %d", len(callReceiveChanMap)))
+	case result := <-receiveChanMap[reqIdStr]:
+		delete(receiveChanMap, reqIdStr)
 		return result
 	}
 }
@@ -125,19 +126,7 @@ func sendRpcReceive(flag byte, header Header, body[]byte) {
 	if resp, error := rpcDecode(body); error != "" {
 		Logger.Warn(error)
 	} else {
-		callReceiveChanMap[id] = make (chan interface{})
-		callReceiveChanMap[id]<-resp
+		receiveChanMap[id] = make (chan interface{})
+		receiveChanMap[id]<-resp
 	}
-}
-
-// 测试rpc
-func TestRpcPing() {
-	now := time.Now().Unix()
-	args :=[]reflect.Value {reflect.ValueOf(now)}
-
-	rpc := NewRpcCall(RpcCall{
-		nameSpace: "test",
-	})
-	result := rpc.Call("ping", args)
-	fmt.Println("rpc返回结果", result, now)
 }

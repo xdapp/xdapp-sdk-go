@@ -7,14 +7,14 @@ import (
 )
 
 var (
-	RpcService *rpc.TCPService		 // rpc 服务
-	RpcContext *rpc.SocketContext	 // 上下文
+	HproseService *rpc.TCPService		 // rpc 服务
+	HproseContext *rpc.SocketContext	 // 上下文
 )
 
 func init() {
-	RpcService = rpc.NewTCPService()
-	RpcContext = new(rpc.SocketContext)
-	RpcContext.InitServiceContext(RpcService)
+	HproseService = rpc.NewTCPService()
+	HproseContext = new(rpc.SocketContext)
+	HproseContext.InitServiceContext(HproseService)
 }
 
 // 屏蔽列表输出
@@ -24,19 +24,15 @@ func DoFunctionList() string {
 
 // 执行结果
 func RpcHandle(data []byte) []byte {
-	return RpcService.Handle(data, RpcContext)
+	return HproseService.Handle(data, HproseContext)
 }
 
-func AddFunction(name string, function interface{}, option ...rpc.Options) {
-	RpcService.AddFunction(name, function, option...)
-}
-
-func AddInstanceMethods(obj interface{}, namespace string) {
-	RpcService.AddInstanceMethods(obj, rpc.Options{NameSpace: namespace})
+func GetHproseAddedFunc() []string {
+	return HproseService.MethodNames
 }
 
 func PrintRpcAddFunctions() {
-	Logger.Info("已增加的rpc列表：", RpcService.MethodNames)
+	Logger.Info("已增加的rpc列表：", GetHproseAddedFunc())
 }
 
 /**

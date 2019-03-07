@@ -3,17 +3,17 @@ package register
 import "reflect"
 
 func (reg *SRegister) GetApp() string {
-	return reg.Console.App
+	return reg.App
 }
 
 func (reg *SRegister) GetName() string {
-	return reg.Console.Name
+	return reg.Name
 }
 func (reg *SRegister) GetVersion() string {
 	return reg.Version
 }
 func (reg *SRegister) GetKey() string {
-	return reg.Console.Key
+	return reg.Key
 }
 
 func (reg *SRegister) SetRegSuccess(isReg bool) {
@@ -25,7 +25,7 @@ func (reg *SRegister) SetServiceData(data map[string]map[string]string) {
 }
 
 func (reg *SRegister) GetFunctions() []string {
-	return RpcService.MethodNames
+	return GetHproseAddedFunc()
 }
 
 func (reg *SRegister) CloseClient() {
@@ -58,10 +58,10 @@ func (reg *SRegister) RpcCall(name string, args []reflect.Value, namespace strin
 		adminId = cfg["adminId"]
 	}
 
-	rpc := NewRpcCall(RpcCall{
-		nameSpace: namespace,
-		serviceId: serviceId,
-		adminId: adminId,
+	rpc := NewRpcClient(RpcClient{
+		NameSpace: namespace,
+		ServiceId: serviceId,
+		AdminId: adminId,
 	})
 
 	return rpc.Call(name, args)

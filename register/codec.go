@@ -72,8 +72,8 @@ func (req Request) Serialize() ([]byte, error) {
 	return BytesCombine(writer.Bytes(), req.Context, req.Body), nil
 }
 
-// Deserialize
-func DeserializeRequest(data []byte) (tao.Message, error) {
+// unserialize
+func unserialize(data []byte) (tao.Message, error) {
 	if data == nil {
 		return nil, tao.ErrNilData
 	}

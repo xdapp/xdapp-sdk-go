@@ -19,14 +19,13 @@ const (
 	FLAG_TRANSPORT   = 8 // 转发浏览器RPC请求，表明这是一个来自浏览器的请求
 )
 
-func NewClient(rfg RegConfig) *tao.ClientConn {
+func NewClient(host string) *tao.ClientConn {
 
-	tcpConfig = rfg.TcpConfig
-	if tcpConfig.host == "" {
+	if host == "" {
 		Logger.Error("缺少tcp host")
 	}
 
-	c := doConnect(tcpConfig.host)
+	c := doConnect(host)
 
 	onConnect := tao.OnConnectOption(func(c tao.WriteCloser) bool {
 		return true
@@ -38,6 +37,7 @@ func NewClient(rfg RegConfig) *tao.ClientConn {
 	onClose := tao.OnCloseOption(func(c tao.WriteCloser) {
 		// 连接关闭 1秒后重连
 		Logger.Error("RPC服务连接关闭，等待重新连接")
+		doConnect(host)
 	})
 
 	onMessage := tao.OnMessageOption(func(msg tao.Message, c tao.WriteCloser) {
@@ -65,7 +65,7 @@ func NewClient(rfg RegConfig) *tao.ClientConn {
 		tao.CustomCodecOption(request),
 	}
 
-	tao.Register(request.MessageNumber(), DeserializeRequest, nil)
+	tao.Register(request.MessageNumber(), unserialize, nil)
 	Conn = tao.NewClientConn(0, c, options...)
 	return Conn
 }
@@ -80,13 +80,13 @@ func doConnect(host string) net.Conn {
 	return c
 }
 
-func (reg *SRegister) Connect() {
-	reg.Conn.Start()
-	defer reg.Conn.Close()
-	for {
-		select {
-		case <-time.After(6 * time.Second):
-			go TestRpcCall()
-		}
-	}
-}
+//func (reg *SRegister) Connect() {
+//	reg.Conn.Start()
+//	defer reg.Conn.Close()
+//	for {
+//		select {
+//		case <-time.After(6 * time.Second):
+//			go TestRpcCall()
+//		}
+//	}
+//}

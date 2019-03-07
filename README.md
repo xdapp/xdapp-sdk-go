@@ -13,7 +13,14 @@ go get hub000.xindong.com/core-system/server-register-go
 功能
 ----------
 - rpc注册service文件夹中服务 （区分sys系统服务 + 普通服务）
-- tcp连接到console服务 执行reg检验参数
+
+
+执行流程
+----------
+- 设置参数
+- 通过hprose注册rpc方法 
+- tcp连接到console服务 
+- 执行reg检验参数
 - 成注册登记 回调reg_ok
 - 检查console目录的前端文件 + 同步更新
 - 调取rpc服务 rpc.Call xxx
@@ -21,14 +28,14 @@ go get hub000.xindong.com/core-system/server-register-go
 > 如请求console test_ping(time)方法
 
 ```go
-now := time.Now().Unix()
-args :=[]reflect.Value {reflect.ValueOf(now)}
-
-rpc := NewRpcCall(RpcCall{
-    nameSpace: "test",
-})
-result := rpc.Call("ping", args)
-fmt.Println("rpc返回结果", result)
+go func() {
+    args := []reflect.Value {reflect.ValueOf(time.Now().Unix())}
+    rpcClient := register.NewRpcClient(register.RpcClient{NameSpace: "test"})
+    result := rpcClient.Call("ping", args)
+    
+    //返回 [pong, xxx] 
+    fmt.Println("rpc返回", result)
+}()
 
 ```
 
@@ -39,26 +46,37 @@ Example
 package main
 
 import (
+	"time"
+	"reflect"
+	"fmt"
 	"server-register-go/register"
 	"server-register-go/service"
-	"time"
+	"github.com/hprose/hprose-golang/rpc"
 )
 
 /**
 测试注册服务
 */
 func main() {
-	sReg, err := register.New(register.RegConfig{IsDebug: true})
+	conf := register.Config{
+		App: "demo",
+		Name: "name",
+		SSl: false,
+		Key: "aaaaaaaaaa",
+		Host: "172.26.128.162:8900",
+		IsDebug: false,
+	}
+	sReg, err := register.New(conf)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	// 加载rpc 方法
-	register.AddInstanceMethods(&service.Sys{sReg}, "sys")
-	register.AddInstanceMethods(&service.Test{"test service"}, "test")
+	hproseService := register.HproseService
+	hproseService.AddInstanceMethods(&service.Sys{sReg}, rpc.Options{NameSpace: "sys"})
+	hproseService.AddInstanceMethods(&service.Test{"test service"}, rpc.Options{NameSpace: "test"})
 
-	// 增加单个方法
-	register.AddFunction("hello", func() string {
+	hproseService.AddFunction("hello", func() string {
 		return "hello world"
 	})
 	register.PrintRpcAddFunctions()
@@ -69,20 +87,12 @@ func main() {
 	for {
 		select {
 		case <-time.After(6 * time.Second):
-			go register.TestRpcCall()
+			go func() {
+				args := []reflect.Value {reflect.ValueOf(time.Now().Unix())}
+				rpcClient := register.NewRpcClient(register.RpcClient{NameSpace: "test"})
+				result := rpcClient.Call("ping", args)
+				fmt.Println("rpc返回", result)
+			}()
 		}
 	}
 }
-
-```
-配置文件：
-
-config.yml
-```golang
-console:
-    app: test
-    name: name
-    key: aaaaaaaaaa
-    host: 127.0.0.1:8900
-    ssl: false
-```
