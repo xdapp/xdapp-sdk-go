@@ -4,6 +4,11 @@
 go get hub000.xindong.com/core-system/server-register-go
 ```
 
+rpc服务
+----------
+
+[hprose](https://github.com/hprose/hprose-golang/)
+
 
 包管理
 ----------
@@ -12,6 +17,7 @@ go get hub000.xindong.com/core-system/server-register-go
 
 功能
 ----------
+- 接入后台console服务器
 - rpc注册service文件夹中服务 （区分sys系统服务 + 普通服务）
 
 

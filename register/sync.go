@@ -31,7 +31,6 @@ var (
 同步Console页面文件
 */
 func (reg *SRegister) ConsolePageSync() {
-
 	if !reg.RegSuccess {
 		return
 	}
@@ -78,6 +77,7 @@ func (reg *SRegister) ConsolePageSync() {
 		}(rFile)
 	}
 	wg.Wait()
+	startChan <- true
 }
 
 /**

@@ -60,6 +60,7 @@ const (
 var (
 	Conn   *tao.ClientConn // tcp客户端连接
 	Logger *log4go.Logger  // log 日志
+	startChan chan bool
 )
 
 /**
@@ -105,6 +106,7 @@ func New(rfg Config) (*SRegister, error) {
 
 	tcpConfig = rfg.TcpConfig
 
+	startChan = make(chan bool)
 	Logger = NewLog4go(rfg.IsDebug, rfg.LogName)
 
 	return &SRegister{

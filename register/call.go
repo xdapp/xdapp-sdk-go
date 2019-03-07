@@ -74,7 +74,7 @@ func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
 	reqId := uint32(getGID())
 
 	// PHP版本对应进程id
-	var rpcContext []byte = make([]byte, 2)
+	var rpcContext = make([]byte, 2)
 	binary.BigEndian.PutUint16(rpcContext, uint16(RPC_CALL_WORKID))
 
 	prefix := Prefix{
@@ -109,24 +109,24 @@ func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
 // rpc 请求返回
 func sendRpcReceive(flag byte, header Header, body[]byte) {
 
-	id := IntToStr(header.RequestId)
+	reqId := IntToStr(header.RequestId)
 	finish := (flag & FLAG_FINISH) == FLAG_FINISH
 
 	if finish == false {
-		receiveBuffer[id] = body
+		receiveBuffer[reqId] = body
 		// 30秒后清理数据
 		Conn.RunAt(time.Now().Add(RPC_CLEAR_BUF_TIME * time.Second), func(i time.Time, closer tao.WriteCloser) {
-			delete(receiveBuffer, id)
+			delete(receiveBuffer, reqId)
 		}); return
-	} else if receiveBuffer[id] != nil {
-		body = BytesCombine(receiveBuffer[id], body)
-		delete(receiveBuffer, id)
+	} else if receiveBuffer[reqId] != nil {
+		body = BytesCombine(receiveBuffer[reqId], body)
+		delete(receiveBuffer, reqId)
 	}
 
 	if resp, error := rpcDecode(body); error != "" {
 		Logger.Warn(error)
 	} else {
-		receiveChanMap[id] = make (chan interface{})
-		receiveChanMap[id]<-resp
+		receiveChanMap[reqId] = make (chan interface{})
+		receiveChanMap[reqId]<-resp
 	}
 }

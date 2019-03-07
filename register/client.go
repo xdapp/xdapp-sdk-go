@@ -80,13 +80,7 @@ func doConnect(host string) net.Conn {
 	return c
 }
 
-//func (reg *SRegister) Connect() {
-//	reg.Conn.Start()
-//	defer reg.Conn.Close()
-//	for {
-//		select {
-//		case <-time.After(6 * time.Second):
-//			go TestRpcCall()
-//		}
-//	}
-//}
+func (reg *SRegister) Connect() {
+	reg.Conn.Start()
+	<- startChan
+}

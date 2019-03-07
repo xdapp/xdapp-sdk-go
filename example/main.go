@@ -2,26 +2,25 @@ package main
 
 import (
 	"time"
-	"reflect"
-	"fmt"
 	"server-register-go/register"
 	"server-register-go/service"
 	"github.com/hprose/hprose-golang/rpc"
+	"reflect"
+	"fmt"
 )
 
 /**
 测试注册服务
 */
 func main() {
-	conf := register.Config{
+	sReg, err := register.New(register.Config{
 		App: "demo",
 		Name: "name",
 		SSl: false,
 		Key: "aaaaaaaaaa",
 		Host: "172.26.128.162:8900",
 		IsDebug: false,
-	}
-	sReg, err := register.New(conf)
+	})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -36,16 +35,16 @@ func main() {
 	})
 	register.PrintRpcAddFunctions()
 
-	sReg.Conn.Start()
+	sReg.Connect()
 	defer sReg.Conn.Close()
 
 	for {
 		select {
-		case <-time.After(6 * time.Second):
+		case <-time.After(5 * time.Second):
 			go func() {
-				args := []reflect.Value {reflect.ValueOf(time.Now().Unix())}
 				rpcClient := register.NewRpcClient(register.RpcClient{NameSpace: "test"})
-				result := rpcClient.Call("ping", args)
+				result := rpcClient.Call("ping",
+					[]reflect.Value {reflect.ValueOf(time.Now().Unix())})
 				fmt.Println("rpc返回", result)
 			}()
 		}
