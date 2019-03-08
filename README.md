@@ -60,9 +60,6 @@ import (
 	"github.com/hprose/hprose-golang/rpc"
 )
 
-/**
-测试注册服务
-*/
 func main() {
 	sReg, err := register.New(register.Config{
 		App: "demo",
@@ -92,11 +89,11 @@ func main() {
 		select {
 		case <-time.After(5 * time.Second):
 			go func() {
-				rpcClient := register.NewRpcClient(register.RpcClient{NameSpace: "test"})
-				result := rpcClient.Call("ping",
-					[]reflect.Value {reflect.ValueOf(time.Now().Unix())})
+				args := []reflect.Value {reflect.ValueOf(time.Now().Unix())}
+				result := sReg.RpcCall("ping", args, "test", map[string]uint32{})
 				fmt.Println("rpc返回", result)
 			}()
 		}
 	}
 }
+```
