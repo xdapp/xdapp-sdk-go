@@ -19,6 +19,17 @@ const (
 	RPC_CLEAR_BUF_TIME = 30	 // rpc 清理数据时间
 )
 
+var (
+	requestId *tao.AtomicInt64	// 请求id 原子递增
+)
+func init()  {
+	requestId = tao.NewAtomicInt64(0)
+}
+
+func getRequestId() int64 {
+	return requestId.GetAndIncrement()
+}
+
 type RpcClient struct {
 	ServiceId uint32
 	AdminId uint32
@@ -68,10 +79,9 @@ func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
 		c.NameSpace = strings.TrimSuffix(c.NameSpace, "_") + "_"
 		name = c.NameSpace + name
 	}
-	body := rpcEncode(name, args)
 
-	// 唯一id
-	reqId := uint32(getGID())
+	body := rpcEncode(name, args)
+	requestId := uint32 (getRequestId())
 
 	// PHP版本对应进程id
 	var rpcContext = make([]byte, 2)
@@ -85,7 +95,7 @@ func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
 	header := Header{
 		0,
 		c.ServiceId,
-		reqId,
+		requestId,
 		c.AdminId,
 		uint8(len(rpcContext)),
 	}
@@ -98,10 +108,9 @@ func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
 	})
 	defer Conn.CancelTimer(timeId)
 
-	reqIdStr := IntToStr(reqId)
 	select {
-	case result := <-receiveChanMap[reqIdStr]:
-		delete(receiveChanMap, reqIdStr)
+	case result := <-receiveChanMap[IntToStr(requestId)]:
+		delete(receiveChanMap, IntToStr(requestId))
 		return result
 	}
 }

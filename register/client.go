@@ -36,7 +36,6 @@ func NewClient(host string) *tao.ClientConn {
 	onClose := tao.OnCloseOption(func(c tao.WriteCloser) {
 		// 连接关闭 1秒后重连
 		Logger.Error("RPC服务连接关闭，等待重新连接")
-		doConnect(host)
 	})
 
 	onMessage := tao.OnMessageOption(func(msg tao.Message, c tao.WriteCloser) {
