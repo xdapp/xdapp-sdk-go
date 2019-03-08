@@ -8,7 +8,6 @@ import (
 
 var (
 	request Request
-	tcpConfig TcpConfig
 )
 
 // tcp标志位

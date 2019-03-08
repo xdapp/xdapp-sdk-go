@@ -3,17 +3,17 @@ package register
 import "reflect"
 
 func (reg *SRegister) GetApp() string {
-	return reg.App
+	return config.App
 }
 
 func (reg *SRegister) GetName() string {
-	return reg.Name
+	return config.Name
 }
 func (reg *SRegister) GetVersion() string {
-	return reg.Version
+	return IntToStr(config.Version)
 }
 func (reg *SRegister) GetKey() string {
-	return reg.Key
+	return config.Key
 }
 
 func (reg *SRegister) SetRegSuccess(isReg bool) {
@@ -48,6 +48,7 @@ func (reg *SRegister) Error(arg0 interface{}, args ...interface{}) {
 	reg.Logger.Error(arg0, args...)
 }
 
+// 调取rpc服务
 func (reg *SRegister) RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
 	var serviceId uint32
 	if _, ok := cfg["serviceId"]; ok {

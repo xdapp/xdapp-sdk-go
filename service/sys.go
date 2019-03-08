@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"time"
 	"strconv"
+	. "time"
 
 	"crypto/sha1"
 	"encoding/hex"
@@ -22,7 +22,7 @@ func (service *Sys) Reg(time int64, rand string, hash string) map[string]interfa
 		return nil
 	}
 
-	if Time() - time > 180 {
+	if Now().Unix() - time > 180 {
 		return nil
 	}
 
@@ -31,7 +31,7 @@ func (service *Sys) Reg(time int64, rand string, hash string) map[string]interfa
 	name    := service.Register.GetName()
 	version := service.Register.GetVersion()
 
-	time = Time()
+	time = Now().Unix()
 	hash = getHash(app, name, IntToStr(time), rand, key)
 	return map[string]interface{}{"app": app, "name": name, "time": time, "rand": rand, "version": version,"hash": hash}
 }
@@ -105,13 +105,6 @@ func Sha1(str string) string {
 	h.Write([]byte(str))
 	r := h.Sum(nil)
 	return hex.EncodeToString(r[:])
-}
-
-/**
-当前时间
-*/
-func Time() int64 {
-	return time.Now().Unix()
 }
 
 func IntToStr(data interface{}) string {

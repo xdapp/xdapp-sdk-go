@@ -61,7 +61,7 @@ var (
 
 // MessageNumber returns the message number.
 func (req Request) MessageNumber() int32 {
-	return int32(1)
+	return int32(config.Version)
 }
 
 // Serialize Request
@@ -130,12 +130,12 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 		err := binary.Read(bytes.NewReader(readBytes), binary.BigEndian, &prefix); if err != nil {
 			return nil, err
 		}
-		if prefix.Ver != 1 {
+		if prefix.Ver != byte(config.Version) {
 			return nil, errors.New("消息版本错误" + string(prefix.Ver))
 		}
 
-		if prefix.Length > uint32(tcpConfig.packageMaxLength) {
-			err := fmt.Sprintf("数据长度为%d, 大于最大值%d", prefix.Length, tcpConfig.packageMaxLength)
+		if prefix.Length > uint32(config.PackageMaxLength) {
+			err := fmt.Sprintf("数据长度为%d, 大于最大值%d", prefix.Length, config.PackageMaxLength)
 			Logger.Error(err)
 			return nil, errors.New(err)
 		}
@@ -180,9 +180,7 @@ func (req Request) Encode(msg tao.Message) ([]byte, error) {
 	return data, nil
 }
 
-/**
-转发消息到其它服务
- */
+// 转发消息到其它服务
 func transportRpcRequest(flag byte, ver byte, header Header, context []byte, body[]byte) {
 
 	flag = flag | FLAG_RESULT_MODE

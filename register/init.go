@@ -7,60 +7,47 @@ import (
 
 // 可配置参数
 type Config struct {
-	Host        string   `服务器域名和端口`
-	SSl         bool     `是否SSL连接`
-	App         string	 `游戏简称`
-	Name        string	 `游戏名字`
-	Key         string	 `服务器秘钥`
-	Version     string	 `服务器版本`
-	IsDebug     bool     `是否debug模式`
-	LogName     string   `log文件名`
-	ConsolePath []string `console前端文件目录`
-	TcpConfig
+	Host             string   // 服务器域名和端口
+	SSl              bool     // 是否SSL连接
+	App              string   // 游戏简称
+	Name             string   // 游戏名字
+	Key              string   // 服务器秘钥
+	Version          int      // 服务器版本
+	IsDebug          bool     // 是否debug模式
+	LogName          string   // log文件名
+	ConsolePath      []string // console前端文件目录
+	PackageMaxLength int      // tcp最大长度
 }
 
 // tcp配置
 type TcpConfig struct {
-	packageLengthOffset int      `tcp包长度位位置`
-	packageBodyOffset   int      `tcp消息体位置`
-	packageMaxLength    int      `tcp最大长度`
-	tcpVersion          int      `tcp协议版本`
 }
 
 type SRegister struct {
-	Config
-	Conn        *tao.ClientConn				   // tcp客户端连接
-	Logger      *log4go.Logger                 // log 日志
-	RegSuccess  bool                           // 注册成功标志
-	ServiceData map[string]map[string]string   // console 注册成功返回的页面服务器信息
-	ConsolePath []string 					   // console前端文件目录
+	Conn        *tao.ClientConn              // tcp客户端连接
+	Logger      *log4go.Logger               // log 日志
+	RegSuccess  bool                         // 注册成功标志
+	ServiceData map[string]map[string]string // console 注册成功返回的页面服务器信息
+	ConsolePath []string                     // console前端文件目录
 }
 
 const (
-	DEFAULT_VER      = "1"
-	DEFAULT_HOST     = "www.xdapp.com:8900"
-	DEFAULT_SSL      = true
-	DEFAULT_APP      = "test"
-	DEFAULT_NAME     = "console"
-	DEFAULT_KEY      = ""
-	DEFAULT_LOG_NAME = "test.log"
+	DEFAULT_VER                = 1
+	DEFAULT_HOST               = "www.xdapp.com:8900"
+	DEFAULT_SSL                = true
+	DEFAULT_APP                = "test"
+	DEFAULT_NAME               = "console"
+	DEFAULT_KEY                = ""
+	DEFAULT_LOG_NAME           = "test.log"
 
-	// 标识   | 版本    | 长度    | 头信息       | 自定义上下文  |  正文
-	// ------|--------|---------|------------|-------------|-------------
-	// Flag  | Ver    | Length  | Header     | Context     | Body
-	// 1     | 1      | 4       | 17         | 默认0不定    | 不定
-	// C     | C      | N       |            |             |
-	// length 包括 Header + Context + Body 的长度
-
-	DEFAULT_PACKAGE_LENGTH_OFFSET = 2        // 包长度开始位置
-	DEFAULT_PACKAGE_BODY_OFFSET   = 6        // 包主体开始位置
-	DEFAULT_PACKAGE_MAX_LENGTH    = 0x21000  // 最大的长度
+	DEFAULT_PACKAGE_MAX_LENGTH = 0x21000 // 最大的长度
 )
 
 var (
 	Conn   *tao.ClientConn // tcp客户端连接
 	Logger *log4go.Logger  // log 日志
 	startChan chan bool
+	config Config
 )
 
 /**
@@ -83,19 +70,12 @@ func New(rfg Config) (*SRegister, error) {
 	if rfg.Key == ""  {
 		rfg.Name = DEFAULT_KEY
 	}
-	if rfg.Version == ""  {
+	if rfg.Version == 0  {
 		rfg.Version = DEFAULT_VER
 	}
 
-	// tcp 配置
-	if rfg.packageLengthOffset == 0 {
-		rfg.packageLengthOffset = DEFAULT_PACKAGE_LENGTH_OFFSET
-	}
-	if rfg.packageBodyOffset == 0 {
-		rfg.packageBodyOffset = DEFAULT_PACKAGE_BODY_OFFSET
-	}
-	if rfg.packageMaxLength == 0 {
-		rfg.packageMaxLength = DEFAULT_PACKAGE_MAX_LENGTH
+	if rfg.PackageMaxLength == 0 {
+		rfg.PackageMaxLength = DEFAULT_PACKAGE_MAX_LENGTH
 	}
 
 	// console 前端目录
@@ -104,13 +84,11 @@ func New(rfg Config) (*SRegister, error) {
 	}
 	rfg.ConsolePath = checkExist(rfg.ConsolePath)
 
-	tcpConfig = rfg.TcpConfig
-
+	config = rfg
 	startChan = make(chan bool)
 	Logger = NewLog4go(rfg.IsDebug, rfg.LogName)
 
 	return &SRegister{
-		rfg,
 		NewClient(rfg.Host),
 		Logger,
 		false,

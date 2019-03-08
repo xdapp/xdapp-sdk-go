@@ -1,10 +1,10 @@
 package main
 
 import (
-	"time"
 	"server-register-go/register"
 	"server-register-go/service"
 	"github.com/hprose/hprose-golang/rpc"
+	"time"
 	"reflect"
 	"fmt"
 )
@@ -41,9 +41,8 @@ func main() {
 		select {
 		case <-time.After(5 * time.Second):
 			go func() {
-				rpcClient := register.NewRpcClient(register.RpcClient{NameSpace: "test"})
-				result := rpcClient.Call("ping",
-					[]reflect.Value {reflect.ValueOf(time.Now().Unix())})
+				args := []reflect.Value {reflect.ValueOf(time.Now().Unix())}
+				result := sReg.RpcCall("ping", args, "test", map[string]uint32{})
 				fmt.Println("rpc返回", result)
 			}()
 		}
