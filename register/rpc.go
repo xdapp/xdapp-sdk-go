@@ -27,12 +27,13 @@ func RpcHandle(data []byte) []byte {
 	return HproseService.Handle(data, HproseContext)
 }
 
+// 已注册的rpc方法
 func GetHproseAddedFunc() []string {
 	return HproseService.MethodNames
 }
 
-func outputAddedFunctions() {
-	Logger.Info("已增加的rpc列表：", GetHproseAddedFunc())
+func AddInstanceMethods(obj interface{}, namespace string) {
+	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: namespace})
 }
 
 /**

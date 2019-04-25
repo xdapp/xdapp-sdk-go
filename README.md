@@ -28,7 +28,6 @@ rpc服务
 - tcp连接到console服务 
 - 执行reg检验参数
 - 成注册登记 回调reg_ok
-- 检查console目录的前端文件 + 同步更新
 - 调取rpc服务 rpc.Call xxx
 
 > 如请求console test_ping(time)方法
@@ -52,16 +51,15 @@ Example
 package main
 
 import (
-	"time"
-	"reflect"
+	"hub000.xindong.com/core-system/xdapp-sdk-go/register"
+	"hub000.xindong.com/core-system/xdapp-sdk-go/service"
 	"fmt"
-	"server-register-go/register"
-	"server-register-go/service"
-	"github.com/hprose/hprose-golang/rpc"
+	"time"
 )
 
+// 测试注册服务
 func main() {
-	sReg, err := register.New(register.Config{
+	reg, err := register.New(register.Config{
 		App: "demo",
 		Name: "name",
 		SSl: false,
@@ -74,25 +72,24 @@ func main() {
 	}
 
 	// 加载rpc 方法
-	hproseService := register.HproseService
-	hproseService.AddInstanceMethods(&service.Sys{sReg}, rpc.Options{NameSpace: "sys"})
-	hproseService.AddInstanceMethods(&service.Test{"test service"}, rpc.Options{NameSpace: "test"})
+	register.AddInstanceMethods(&service.Sys{reg}, "sys")
+	register.AddInstanceMethods(&service.Test{"test service"}, "test")
 
+	hproseService := register.HproseService
 	hproseService.AddFunction("hello", func() string {
 		return "hello world"
 	})
 
-	sReg.Connect()
-	defer sReg.Conn.Close()
+	fmt.Println("已增加的rpc列表", register.GetHproseAddedFunc())
+
+	reg.Conn.Start()
+	defer reg.Conn.Close()
 
 	for {
 		select {
 		case <-time.After(5 * time.Second):
-			go func() {
-				args := []reflect.Value {reflect.ValueOf(time.Now().Unix())}
-				result := sReg.RpcCall("ping", args, "test", map[string]uint32{})
-				fmt.Println("rpc返回", result)
-			}()
+			fmt.Println("测试")
+		// result := reg.RpcCall("ping", args, "test", map[string]uint32{})
 		}
 	}
 }

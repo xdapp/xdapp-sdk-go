@@ -64,7 +64,6 @@ func (req Request) MessageNumber() int32 {
 	return int32(config.Version)
 }
 
-// Serialize Request
 func (req Request) Serialize() ([]byte, error) {
 	var writer = new(bytes.Buffer)
 	pack(writer, req.Prefix)
@@ -72,8 +71,7 @@ func (req Request) Serialize() ([]byte, error) {
 	return BytesCombine(writer.Bytes(), req.Context, req.Body), nil
 }
 
-// unserialize
-func unserialize(data []byte) (tao.Message, error) {
+func Unserialize(data []byte) (tao.Message, error) {
 	if data == nil {
 		return nil, tao.ErrNilData
 	}
@@ -83,21 +81,6 @@ func unserialize(data []byte) (tao.Message, error) {
 	binary.Read(reader, binary.BigEndian, req)
 	return req, nil
 }
-
-// 标识   | 版本    | 长度    | 头信息       | 自定义内容    |  正文
-// ------|--------|---------|------------|-------------|-------------
-// Flag  | Ver    | Length  | Header     | Context      | Body
-// 1     | 1      | 4       | 17         | 默认0，不定   | 不定
-// C     | C      | N       |            |             |
-//
-//
-// 其中 Header 部分包括
-//
-// AppId     | 服务ID      | rpc请求序号  | 管理员ID      | 自定义信息长度
-// ----------|------------|------------|-------------|-----------------
-// AppId     | ServiceId  | RequestId  | AdminId     | ContextLength
-// 4         | 4          | 4          | 4           | 1
-// N         | N          | N          | N           | C
 
 func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 	byteChan := make(chan []byte)
@@ -126,7 +109,9 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			return nil, ErrReadByteEmpty
 		}
 
+		var header Header
 		var prefix Prefix
+
 		err := binary.Read(bytes.NewReader(readBytes), binary.BigEndian, &prefix); if err != nil {
 			return nil, err
 		}
@@ -140,9 +125,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			return nil, errors.New(err)
 		}
 
-		var header Header
-		headBytes, err := readBytesByLength(raw, HEADER_LENGTH)
-		if err != nil {
+		headBytes, err := readBytesByLength(raw, HEADER_LENGTH); if err != nil {
 			return nil, err
 		}
 		headBuf := bytes.NewReader(headBytes)
@@ -151,13 +134,11 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 		}
 
 		ctxLen := int(header.ContextLength)
-		context, err := readBytesByLength(raw, ctxLen)
-		if err != nil {
+		context, err := readBytesByLength(raw, ctxLen); if err != nil {
 			return nil, err
 		}
 
-		body, err := readBytesByLength(raw, int(prefix.Length) - HEADER_LENGTH - ctxLen)
-		if err != nil {
+		body, err := readBytesByLength(raw, int(prefix.Length) - HEADER_LENGTH - ctxLen); if err != nil {
 			return nil, err
 		}
 
@@ -173,8 +154,7 @@ func readBytesByLength(r io.Reader, len int) ([]byte, error) {
 
 // Encode encodes the message into bytes data.
 func (req Request) Encode(msg tao.Message) ([]byte, error) {
-	data, err := msg.Serialize()
-	if err != nil {
+	data, err := msg.Serialize(); if err != nil {
 		return nil, err
 	}
 	return data, nil
@@ -183,33 +163,23 @@ func (req Request) Encode(msg tao.Message) ([]byte, error) {
 // 转发消息到其它服务
 func transportRpcRequest(flag byte, ver byte, header Header, context []byte, body[]byte) {
 
+	totalLen := len(body)
 	flag = flag | FLAG_RESULT_MODE
-	dataLength := len(body)
 
-	if dataLength < SEND_CHUNK_LENGTH {
-		prefix := Prefix{
-			uint8(flag | FLAG_FINISH),
-			ver,
-			getRequestLength(context, body),
-		}
-		sendRequest(Request{prefix, header, context, body})
-		return
+	if totalLen < SEND_CHUNK_LENGTH {
+		prefix := Prefix{uint8(flag | FLAG_FINISH),ver,uint32(HEADER_LENGTH + len(context) + len(body))}
+		sendRequest(Request{prefix, header, context, body});return
 	}
 
 	// 大于 拆包分段发送
-	for i := 0; i < dataLength; i += SEND_CHUNK_LENGTH {
-
-		chunkLen := Min(SEND_CHUNK_LENGTH, dataLength - i)
-		if dataLength - i == chunkLen {
+	for i := 0; i < totalLen; i += SEND_CHUNK_LENGTH {
+		sendLen := Min(SEND_CHUNK_LENGTH, totalLen - i)
+		if totalLen - i == sendLen {
 			flag |= FLAG_FINISH
 		}
 
-		chunk := body[i:chunkLen]
-		prefix := Prefix{
-			uint8(flag),
-			ver,
-			getRequestLength(context, chunk),
-		}
+		chunk := body[i:sendLen]
+		prefix := Prefix{uint8(flag),ver,uint32(HEADER_LENGTH + len(context) + len(chunk))}
 		sendRequest(Request{prefix, header, context, chunk})
 	}
 }
@@ -218,8 +188,4 @@ func sendRequest(request Request) {
 	if err := Conn.Write(request); err != nil {
 		Logger.Error("error", err)
 	}
-}
-
-func getRequestLength(context []byte, body []byte) uint32 {
-	return uint32(HEADER_LENGTH + len(context) + len(body))
 }

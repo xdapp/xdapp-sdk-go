@@ -1,11 +1,11 @@
 package register
 
 import (
+	"time"
 	"reflect"
 	"strings"
-	"time"
-	"github.com/leesper/tao"
 	"encoding/binary"
+	"github.com/leesper/tao"
 )
 
 var (
@@ -19,22 +19,11 @@ const (
 	RPC_CLEAR_BUF_TIME = 30	 // rpc 清理数据时间
 )
 
-var (
-	requestId *tao.AtomicInt64	// 请求id 原子递增
-)
-func init()  {
-	requestId = tao.NewAtomicInt64(0)
-}
-
-func getRequestId() int64 {
-	return requestId.GetAndIncrement()
-}
-
 type RpcClient struct {
 	ServiceId uint32
-	AdminId uint32
+	AdminId   uint32
+	TimeOut   uint32
 	NameSpace string
-	TimeOut uint32
 }
 
 func NewRpcClient(c RpcClient) *RpcClient {
@@ -81,28 +70,15 @@ func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
 	}
 
 	body := rpcEncode(name, args)
-	requestId := uint32 (getRequestId())
+	requestId := uint32 (requestId.GetAndIncrement())
 
-	// PHP版本对应进程id
 	var rpcContext = make([]byte, 2)
 	binary.BigEndian.PutUint16(rpcContext, uint16(RPC_CALL_WORKID))
-
-	prefix := Prefix{
-		0,
-		1,
-		getRequestLength(rpcContext, body),
-	}
-	header := Header{
-		0,
-		c.ServiceId,
-		requestId,
-		c.AdminId,
-		uint8(len(rpcContext)),
-	}
+	prefix := Prefix{0,1,uint32(HEADER_LENGTH + len(rpcContext) + len(body))}
+	header := Header{0,c.ServiceId,requestId,c.AdminId,uint8(len(rpcContext))}
 	sendRequest(Request{prefix, header, rpcContext, body})
 
 	time.Sleep(10 * time.Millisecond)
-
 	timeId := Conn.RunAfter(time.Duration(c.TimeOut) * time.Second, func(i time.Time, closer tao.WriteCloser) {
 		Logger.Info("Cancel the context")
 	})

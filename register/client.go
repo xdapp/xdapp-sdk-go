@@ -8,6 +8,7 @@ import (
 
 var (
 	request Request
+	requestId *tao.AtomicInt64	// 请求id 原子递增
 )
 
 // tcp标志位
@@ -19,13 +20,11 @@ const (
 )
 
 func NewClient(host string) *tao.ClientConn {
-
 	if host == "" {
 		Logger.Error("缺少tcp host")
 	}
 
 	c := doConnect(host)
-
 	onConnect := tao.OnConnectOption(func(c tao.WriteCloser) bool {
 		return true
 	})
@@ -33,8 +32,8 @@ func NewClient(host string) *tao.ClientConn {
 	onError := tao.OnErrorOption(func(c tao.WriteCloser) {
 	})
 
+	// 连接关闭 1秒后重连
 	onClose := tao.OnCloseOption(func(c tao.WriteCloser) {
-		// 连接关闭 1秒后重连
 		Logger.Error("RPC服务连接关闭，等待重新连接")
 	})
 
@@ -50,10 +49,10 @@ func NewClient(host string) *tao.ClientConn {
 			sendRpcReceive(flag, header, body)
 			return
 		}
-		//RpcContext.BaseContext.Set("receiveParam", msg.(Request))
 		transportRpcRequest(flag, ver, header, context, RpcHandle(body))
 	})
 
+	requestId = tao.NewAtomicInt64(0)
 	options := []tao.ServerOption{
 		onConnect,
 		onError,
@@ -63,9 +62,9 @@ func NewClient(host string) *tao.ClientConn {
 		tao.CustomCodecOption(request),
 	}
 
-	tao.Register(request.MessageNumber(), unserialize, nil)
-	Conn = tao.NewClientConn(0, c, options...)
-	return Conn
+	tao.Register(request.MessageNumber(), Unserialize, nil)
+
+	return tao.NewClientConn(0, c, options...)
 }
 
 func doConnect(host string) net.Conn {
@@ -76,10 +75,4 @@ func doConnect(host string) net.Conn {
 		return doConnect(host)
 	}
 	return c
-}
-
-func (reg *SRegister) Connect() {
-	reg.Conn.Start()
-	outputAddedFunctions()
-	<- startChan
 }

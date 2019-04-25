@@ -11,7 +11,6 @@ type IRegister interface {
 	SetRegSuccess(status bool)
 	SetServiceData(data map[string]map[string]string)
 	CloseClient()
-	ConsolePageSync()
 	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{}
 	ILogger
 }

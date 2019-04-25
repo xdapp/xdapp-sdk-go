@@ -3,6 +3,7 @@ package register
 import (
 	"github.com/alecthomas/log4go"
 	"github.com/leesper/tao"
+	"reflect"
 )
 
 // 可配置参数
@@ -15,7 +16,6 @@ type Config struct {
 	Version          int      // 服务器版本
 	IsDebug          bool     // 是否debug模式
 	LogName          string   // log文件名
-	ConsolePath      []string // console前端文件目录
 	PackageMaxLength int      // tcp最大长度
 }
 
@@ -28,7 +28,6 @@ type SRegister struct {
 	Logger      *log4go.Logger               // log 日志
 	RegSuccess  bool                         // 注册成功标志
 	ServiceData map[string]map[string]string // console 注册成功返回的页面服务器信息
-	ConsolePath []string                     // console前端文件目录
 }
 
 const (
@@ -44,10 +43,9 @@ const (
 )
 
 var (
+	config Config
 	Conn   *tao.ClientConn // tcp客户端连接
 	Logger *log4go.Logger  // log 日志
-	startChan chan bool
-	config Config
 )
 
 /**
@@ -55,60 +53,107 @@ var (
 */
 func New(rfg Config) (*SRegister, error) {
 
-	if rfg.Host == "" {
-		rfg.Host = DEFAULT_HOST
-	}
-	if rfg.SSl == false {
-		rfg.SSl = DEFAULT_SSL
-	}
-	if rfg.App == ""  {
-		rfg.App = DEFAULT_APP
-	}
-	if rfg.Name == ""  {
-		rfg.Name = DEFAULT_NAME
-	}
-	if rfg.Key == ""  {
-		rfg.Name = DEFAULT_KEY
-	}
-	if rfg.Version == 0  {
-		rfg.Version = DEFAULT_VER
-	}
-
-	if rfg.PackageMaxLength == 0 {
-		rfg.PackageMaxLength = DEFAULT_PACKAGE_MAX_LENGTH
-	}
-
-	// console 前端目录
-	if rfg.ConsolePath == nil {
-		rfg.ConsolePath = append([]string{}, defaultBaseDir() + "/console/")
-	}
-	rfg.ConsolePath = checkExist(rfg.ConsolePath)
-
 	config = rfg
-	startChan = make(chan bool)
-	Logger = NewLog4go(rfg.IsDebug, rfg.LogName)
+	if config.Host == "" {
+		config.Host = DEFAULT_HOST
+	}
+	if config.SSl == false {
+		config.SSl = DEFAULT_SSL
+	}
+	if config.App == ""  {
+		config.App = DEFAULT_APP
+	}
+	if config.Name == ""  {
+		config.Name = DEFAULT_NAME
+	}
+	if config.Key == ""  {
+		config.Name = DEFAULT_KEY
+	}
+	if config.Version == 0  {
+		config.Version = DEFAULT_VER
+	}
+	if config.PackageMaxLength == 0 {
+		config.PackageMaxLength = DEFAULT_PACKAGE_MAX_LENGTH
+	}
 
-	return &SRegister{
-		NewClient(rfg.Host),
-		Logger,
-		false,
-		make(map[string]map[string]string),
-		rfg.ConsolePath,
-	}, nil
+	Conn = NewClient(config.Host)
+	Logger = NewLog4go(config.IsDebug, config.LogName)
+
+	return &SRegister{Conn,Logger,false,nil,}, nil
 }
 
-/**
-获取key
-*/
 func (reg *SRegister) getKey() string {
 	return reg.ServiceData["pageServer"]["key"]
 }
 
-/**
-获取host
-*/
 func (reg *SRegister) getHost() string {
 	return reg.ServiceData["pageServer"]["host"]
+}
+
+func (reg *SRegister) GetApp() string {
+	return config.App
+}
+
+func (reg *SRegister) GetName() string {
+	return config.Name
+}
+func (reg *SRegister) GetVersion() string {
+	return IntToStr(config.Version)
+}
+func (reg *SRegister) GetKey() string {
+	return config.Key
+}
+
+func (reg *SRegister) SetRegSuccess(isReg bool) {
+	reg.RegSuccess = isReg
+}
+
+func (reg *SRegister) SetServiceData(data map[string]map[string]string) {
+	reg.ServiceData = data
+}
+
+func (reg *SRegister) GetFunctions() []string {
+	return GetHproseAddedFunc()
+}
+
+func (reg *SRegister) CloseClient() {
+	reg.Conn.Close()
+}
+
+func (reg *SRegister) Info(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Info(arg0, args...)
+}
+
+func (reg *SRegister) Debug(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Debug(arg0, args...)
+}
+
+func (reg *SRegister) Warn(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Warn(arg0, args...)
+}
+
+func (reg *SRegister) Error(arg0 interface{}, args ...interface{}) {
+	reg.Logger.Error(arg0, args...)
+}
+
+// 调取rpc服务
+func (reg *SRegister) RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
+	var serviceId uint32
+	if _, ok := cfg["serviceId"]; ok {
+		serviceId = cfg["serviceId"]
+	}
+	var adminId uint32
+	if _, ok := cfg["adminId"]; ok {
+		adminId = cfg["adminId"]
+	}
+
+	rpc := NewRpcClient(RpcClient{
+		NameSpace: namespace,
+		ServiceId: serviceId,
+		AdminId: adminId,
+	})
+
+	return rpc.Call(name, args)
 }
 
 /**

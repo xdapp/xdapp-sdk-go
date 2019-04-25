@@ -16,34 +16,21 @@ import (
 	"log"
 )
 
-/**
-
- */
 func JsonEncode(data interface{}) string {
 	json, err := json.Marshal(data)
-
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
 	return string(json)
 }
 
-/**
-
- */
 func JsonDecode(str string, fields interface{}) {
-
 	err := json.Unmarshal([]byte(str), &fields)
-
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 }
 
-/**
-
- */
 func Implode(split string, array map[string]string) string {
 	var str string
 	for _, v := range array {
@@ -52,9 +39,6 @@ func Implode(split string, array map[string]string) string {
 	return strings.Trim(str, split)
 }
 
-/**
-文件md5
-*/
 func Md5File(path string) string {
 	file, err := os.Open(path)
 	if err != nil {
@@ -66,9 +50,6 @@ func Md5File(path string) string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-/**
-md5
-*/
 func Md5(str string) string {
 	hash := md5.New()
 	hash.Write([]byte(str))
@@ -76,20 +57,16 @@ func Md5(str string) string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-/**
-当前时间
-*/
 func Time() int64 {
 	return time.Now().Unix()
 }
 
 func IntToStr(data interface{}) string {
-
 	switch value := data.(type) {
 	case int:
 		return strconv.Itoa(value) // int to str
 	case int64:
-		return strconv.FormatInt(value, 10) // int64 转str
+		return strconv.FormatInt(value, 10) // int64 to str
 	case uint32:
 		return strconv.FormatUint(uint64(value), 10)
 	case uint64:
@@ -113,9 +90,6 @@ func StrToInt64(str string) int64 {
 	return data
 }
 
-/**
-判断文件存在
-*/
 func PathExist(_path string) bool {
 	_, err := os.Stat(_path)
 	if err != nil && os.IsNotExist(err) {
@@ -124,9 +98,6 @@ func PathExist(_path string) bool {
 	return true
 }
 
-/**
-
- */
 func Min(a, b int) int {
 	if a <= b {
 		return a
@@ -134,9 +105,6 @@ func Min(a, b int) int {
 	return b
 }
 
-/**
-字符串截取
-*/
 func Substr(s string, pos int, length int) string {
 	runes := []rune(s)
 	l := pos + length
@@ -153,9 +121,6 @@ func BytesCombine(pBytes ...[]byte) []byte {
 	return bytes.Join(pBytes, []byte(""))
 }
 
-/**
-获取函数名
-*/
 func GetFuncName() string {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
@@ -191,7 +156,6 @@ func defaultBaseDir() string {
 	return strings.Replace(dir, "\\", "/", -1)
 }
 
-// 校验前端目录存在
 func checkExist(path []string) []string {
 	var exist []string
 	for _, p := range path {
