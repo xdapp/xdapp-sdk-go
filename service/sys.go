@@ -17,10 +17,10 @@ type SysService struct {
 func (service *SysService) Reg(time int64, rand string, hash string) map[string]interface{} {
 
 	curHash := Sha1(fmt.Sprintf("%s.%s.%s", IntToStr(time), rand, "xdapp.com")); if curHash != hash {
-		return nil
+		return map[string]interface{}{"status": false}
 	}
 	if Now().Unix() - time > 180 {
-		return nil
+		return map[string]interface{}{"status": false}
 	}
 
 	app := service.Register.GetApp()
@@ -30,7 +30,7 @@ func (service *SysService) Reg(time int64, rand string, hash string) map[string]
 
 	time = Now().Unix()
 	hash = getHash(app, name, IntToStr(time), rand, key)
-	return map[string]interface{}{"app": app, "name": name, "time": time, "rand": rand, "version": version,"hash": hash}
+	return map[string]interface{}{"status": true, "app": app, "name": name, "time": time, "rand": rand, "version": version,"hash": hash}
 }
 
 // 获取菜单列表
