@@ -1,7 +1,7 @@
 安装
 ----------
 ```
-go get hub000.xindong.com/core-system/server-register-go
+go get github.com/xdapp/xdapp-sdk-go
 ```
 
 rpc服务
@@ -20,6 +20,15 @@ rpc服务
 - 接入后台console服务器
 - rpc注册service文件夹中服务 （区分sys系统服务 + 普通服务）
 
+服务器列表
+----------
+
+* 国内生产环境 `service-prod.xdapp.com:8900`
+* 海外生产环境 `service-gcp.xdapp.com:8900`
+* 开发测试环境 `service-dev.xdapp.com:8100`
+* 本地测试环境 `127.0.0.1:8062`，需自己启动本地开发工具，see https://github.com/xdapp/xdapp-local-dev
+
+> 除本地开发环境不是SSL的其它都是SSL的
 
 执行流程
 ----------
@@ -51,8 +60,8 @@ Example
 package main
 
 import (
-	"hub000.xindong.com/core-system/xdapp-sdk-go/register"
-	"hub000.xindong.com/core-system/xdapp-sdk-go/service"
+	"github.com/xdapp/xdapp-sdk-go/register"
+	"github.com/xdapp/xdapp-sdk-go/service"
 	"fmt"
 	"time"
 )
@@ -63,8 +72,8 @@ func main() {
 		App: "demo",
 		Name: "name",
 		SSl: false,
-		Key: "aaaaaaaaaa",
-		Host: "172.26.128.162:8900",
+		Key: "123456",
+		Host: "service-dev.xdapp.com:8100",     // 其它环境服务器见服务器列表
 		IsDebug: false,
 	})
 	if err != nil {
