@@ -1,10 +1,10 @@
 package main
 
 import (
-	"xdapp-sdk-go/register"
-	"xdapp-sdk-go/service"
 	"fmt"
 	"time"
+	"xdapp-sdk-go/register"
+	"xdapp-sdk-go/service"
 )
 
 // 测试注册服务
@@ -39,7 +39,6 @@ func main() {
 		select {
 		case <-time.After(5 * time.Second):
 			fmt.Println("测试")
-		// result := reg.RpcCall("ping", args, "test", map[string]uint32{})
 		}
 	}
 }

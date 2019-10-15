@@ -1,6 +1,7 @@
 package register
 
 import (
+	"errors"
 	"github.com/alecthomas/log4go"
 	"github.com/leesper/tao"
 	"reflect"
@@ -27,7 +28,7 @@ type SRegister struct {
 	Conn        *tao.ClientConn              // tcp客户端连接
 	Logger      *log4go.Logger               // log 日志
 	RegSuccess  bool                         // 注册成功标志
-	ServiceData map[string]map[string]string // console 注册成功返回的页面服务器信息
+	ServiceData map[interface{}]interface{} 		 // console 注册成功返回的页面服务器信息
 }
 
 const (
@@ -76,18 +77,21 @@ func New(rfg Config) (*SRegister, error) {
 		config.PackageMaxLength = DEFAULT_PACKAGE_MAX_LENGTH
 	}
 
-	Conn = NewClient(config.Host)
 	Logger = NewLog4go(config.IsDebug, config.LogName)
+	Conn = NewClient(config.Host)
 
 	return &SRegister{Conn,Logger,false,nil,}, nil
 }
 
 func (reg *SRegister) getKey() string {
-	return reg.ServiceData["pageServer"]["key"]
+
+	pageSvr := reg.ServiceData["pageServer"].(map[string]string)
+	return pageSvr["key"]
 }
 
 func (reg *SRegister) getHost() string {
-	return reg.ServiceData["pageServer"]["host"]
+	pageSvr := reg.ServiceData["pageServer"].(map[string]string)
+	return pageSvr["host"]
 }
 
 func (reg *SRegister) GetApp() string {
@@ -108,8 +112,13 @@ func (reg *SRegister) SetRegSuccess(isReg bool) {
 	reg.RegSuccess = isReg
 }
 
-func (reg *SRegister) SetServiceData(data map[string]map[string]string) {
-	reg.ServiceData = data
+func (reg *SRegister) SetServiceData(data interface{}) error {
+	svrData, ok := data.(map[interface{}]interface{})
+	if !ok {
+		return errors.New("regOK serviceData is illegal")
+	}
+	reg.ServiceData = svrData
+	return nil
 }
 
 func (reg *SRegister) GetFunctions() []string {

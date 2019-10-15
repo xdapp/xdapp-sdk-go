@@ -9,7 +9,7 @@ type IRegister interface {
 	GetVersion() string
 	GetFunctions() []string
 	SetRegSuccess(status bool)
-	SetServiceData(data map[string]map[string]string)
+	SetServiceData(data interface{}) error
 	CloseClient()
 	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{}
 	ILogger

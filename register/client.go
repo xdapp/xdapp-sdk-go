@@ -1,6 +1,7 @@
 package register
 
 import (
+	"crypto/tls"
 	"net"
 	"time"
 	"github.com/leesper/tao"
@@ -21,7 +22,7 @@ const (
 
 func NewClient(host string) *tao.ClientConn {
 	if host == "" {
-		Logger.Error("缺少tcp host")
+		Logger.Warn("缺少tcp host")
 	}
 
 	c := doConnect(host)
@@ -34,7 +35,8 @@ func NewClient(host string) *tao.ClientConn {
 
 	// 连接关闭 1秒后重连
 	onClose := tao.OnCloseOption(func(c tao.WriteCloser) {
-		Logger.Error("RPC服务连接关闭，等待重新连接")
+		Logger.Debug("RPC服务连接关闭，等待重新连接")
+		doConnect(host)
 	})
 
 	onMessage := tao.OnMessageOption(func(msg tao.Message, c tao.WriteCloser) {
@@ -52,12 +54,16 @@ func NewClient(host string) *tao.ClientConn {
 		transportRpcRequest(flag, ver, header, context, RpcHandle(body))
 	})
 
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
 	requestId = tao.NewAtomicInt64(0)
 	options := []tao.ServerOption{
 		onConnect,
 		onError,
 		onClose,
 		onMessage,
+		tao.TLSCredsOption(tlsConf),
 		tao.ReconnectOption(),
 		tao.CustomCodecOption(request),
 	}
@@ -68,10 +74,15 @@ func NewClient(host string) *tao.ClientConn {
 }
 
 func doConnect(host string) net.Conn {
-	c, err := net.Dial("tcp", host)
+
+	conf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	c, err := tls.Dial("tcp", host, conf)
+
 	if err != nil {
-		Logger.Error("RPC服务连接错误，等待重新连接" + err.Error())
-		time.Sleep(1 * time.Second)
+		Logger.Warn("RPC服务连接错误，等待重新连接" + err.Error())
+		time.Sleep(2 * time.Second)
 		return doConnect(host)
 	}
 	return c

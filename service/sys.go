@@ -43,7 +43,7 @@ func (service *SysService) RegErr(msg string, data interface{}) {
 	service.Register.Error("注册失败", msg, data)
 }
 
-func (service *SysService) RegOk(data map[string]map[string]string, time int, rand string, hash string) {
+func (service *SysService) RegOk(data interface{}, time int, rand string, hash string) {
 
 	app := service.Register.GetApp()
 	key := service.Register.GetKey()
@@ -57,14 +57,22 @@ func (service *SysService) RegOk(data map[string]map[string]string, time int, ra
 
 	// 注册成功
 	service.Register.SetRegSuccess(true)
-	service.Register.SetServiceData(data)
 
-	service.Register.Debug("RPC服务注册成功，服务名:" + app + "-> " + name)
+	err := service.Register.SetServiceData(data)
+	if err != nil {
+		service.Register.Warn(err.Error())
+	} else {
+		service.Register.Debug("RPC服务注册成功，服务名:" + app + "-> " + name)
+	}
 }
 
 // 测试接口
 func (service *SysService) Test(str string) {
 	fmt.Println(str)
+}
+
+func (service *SysService) Ping() bool {
+	return true
 }
 
 // 获取rpc方法列表
