@@ -1,47 +1,49 @@
 package register
 
 import (
-	"time"
-	"reflect"
-	"strings"
 	"encoding/binary"
 	"github.com/leesper/tao"
-)
-
-var (
-	receiveBuffer  map[string][]byte
-	receiveChanMap = make (map[string]chan interface{})
+	"reflect"
+	"strings"
+	"time"
 )
 
 const (
-	RPC_CALL_WORKID    = 0	 // rpc workId (PHP版本对应进程id)
-	RPC_CALL_TimeOut   = 10	 // rpc 请求超时时间
-	RPC_CLEAR_BUF_TIME = 30	 // rpc 清理数据时间
+	RpcCallWorkId    = 0	 // rpc workId (PHP版本对应进程id)
+	RpcCallTimeout   = 10	 // rpc 请求超时时间
+	RpcClearBufTime = 30	 // rpc 清理数据时间
 )
 
-type RpcClient struct {
+type rpcClient struct {
+	Conn     *tao.ClientConn
 	ServiceId uint32
 	AdminId   uint32
 	TimeOut   uint32
 	NameSpace string
 }
 
-func NewRpcClient(c RpcClient) *RpcClient {
-	if c.TimeOut == 0 {
-		c.TimeOut = RPC_CALL_TimeOut
+func NewRpcClient(conn *tao.ClientConn, serviceId uint32, adminId uint32, timeOut uint32,  nameSpace string) *rpcClient {
+	if timeOut == 0 {
+		timeOut = RpcCallTimeout
 	}
-	return &c
+	return &rpcClient{
+		Conn:      conn,
+		ServiceId: serviceId,
+		AdminId:   adminId,
+		TimeOut:   timeOut,
+		NameSpace: nameSpace,
+	}
 }
 
-func (c *RpcClient) SetAdminId(AdminId uint32) {
+func (c *rpcClient) SetAdminId(AdminId uint32) {
 	c.AdminId = AdminId
 }
 
-func (c *RpcClient) SetTimeOut(TimeOut uint32) {
+func (c *rpcClient) SetTimeOut(TimeOut uint32) {
 	c.TimeOut = TimeOut
 }
 
-func (c *RpcClient) SetNameSpace(NameSpace string) {
+func (c *rpcClient) SetNameSpace(NameSpace string) {
 	c.NameSpace = NameSpace
 }
 
@@ -63,7 +65,7 @@ func (c *RpcClient) SetNameSpace(NameSpace string) {
 # 4         | 4          | 4          | 4           | 1
 # N         | N          | N          | N           | C
 */
-func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
+func (c *rpcClient) Call(name string, args []reflect.Value) interface{} {
 	if c.NameSpace != "" {
 		c.NameSpace = strings.TrimSuffix(c.NameSpace, "_") + "_"
 		name = c.NameSpace + name
@@ -73,45 +75,21 @@ func (c *RpcClient) Call(name string, args []reflect.Value) interface{} {
 	requestId := uint32 (requestId.GetAndIncrement())
 
 	var rpcContext = make([]byte, 2)
-	binary.BigEndian.PutUint16(rpcContext, uint16(RPC_CALL_WORKID))
-	prefix := Prefix{0,1,uint32(HEADER_LENGTH + len(rpcContext) + len(body))}
+	binary.BigEndian.PutUint16(rpcContext, uint16(RpcCallWorkId))
+	prefix := Prefix{0,1,uint32(HeaderLength + len(rpcContext) + len(body))}
 	header := Header{0,c.ServiceId,requestId,c.AdminId,uint8(len(rpcContext))}
-	sendRequest(Request{prefix, header, rpcContext, body})
+	sendRequest(c.Conn, Request{prefix, header, rpcContext, body})
 
 	time.Sleep(10 * time.Millisecond)
-	timeId := Conn.RunAfter(time.Duration(c.TimeOut) * time.Second, func(i time.Time, closer tao.WriteCloser) {
+	timeId := c.Conn.RunAfter(time.Duration(c.TimeOut) * time.Second, func(i time.Time, closer tao.WriteCloser) {
 		Logger.Info("Cancel the context")
 	})
-	defer Conn.CancelTimer(timeId)
+	defer c.Conn.CancelTimer(timeId)
 
+	reqId := IntToStr(requestId)
 	select {
-	case result := <-receiveChanMap[IntToStr(requestId)]:
-		delete(receiveChanMap, IntToStr(requestId))
+	case result := <-receiveChanMap[reqId]:
+		delete(receiveChanMap, reqId)
 		return result
-	}
-}
-
-// rpc 请求返回
-func sendRpcReceive(flag byte, header Header, body[]byte) {
-
-	reqId := IntToStr(header.RequestId)
-	finish := (flag & FLAG_FINISH) == FLAG_FINISH
-
-	if finish == false {
-		receiveBuffer[reqId] = body
-		// 30秒后清理数据
-		Conn.RunAt(time.Now().Add(RPC_CLEAR_BUF_TIME * time.Second), func(i time.Time, closer tao.WriteCloser) {
-			delete(receiveBuffer, reqId)
-		}); return
-	} else if receiveBuffer[reqId] != nil {
-		body = BytesCombine(receiveBuffer[reqId], body)
-		delete(receiveBuffer, reqId)
-	}
-
-	if resp, error := rpcDecode(body); error != "" {
-		Logger.Warn(error)
-	} else {
-		receiveChanMap[reqId] = make (chan interface{})
-		receiveChanMap[reqId]<-resp
 	}
 }

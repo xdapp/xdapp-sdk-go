@@ -1,44 +1,43 @@
 package main
 
 import (
-	"fmt"
-	"time"
 	"xdapp-sdk-go/register"
 	"xdapp-sdk-go/service"
 )
 
 // 测试注册服务
 func main() {
-	reg, err := register.New(register.Config{
+	reg, err := register.New(&register.Config{
 		App: "demo",
 		Name: "name",
-		SSl: false,
 		Key: "aaaaaaaaaa",
-		Host: "172.26.128.162:8900",
 		IsDebug: false,
 	})
 	if err != nil {
 		panic(err.Error())
 	}
 
-	// 加载rpc 方法
-	register.AddInstanceMethods(&service.SysService{reg}, "sys")
-	register.AddInstanceMethods(&service.TestService{"test service"}, "test")
+	// 注册系统rpc方法 （必加, 其中 sys 为服务前缀，请求方法为 sys_xxx）
+	sysService := &service.SysService{Register: reg}
+	register.AddInstanceMethods(sysService, "sys")
 
-	hproseService := register.HproseService
-	hproseService.AddFunction("hello", func() string {
-		return "hello world"
-	})
+	//注册测试rpc方法 （其中 test 为服务前缀，请求方法为 test_xxx）
+	testService := &service.TestService{Name: "test"}
+	register.AddInstanceMethods(testService, "test")
 
-	fmt.Println("已增加的rpc列表", register.GetHproseAddedFunc())
+	// 注册一个方法 访问 hello
+	register.AddFunction("hello", func() string {return "hello world"}, "")
 
-	reg.Conn.Start()
-	defer reg.Conn.Close()
+	register.Logger.Info("已增加的rpc列表", register.GetHproseAddedFunc())
 
-	for {
-		select {
-		case <-time.After(5 * time.Second):
-			fmt.Println("测试")
-		}
-	}
+	reg.ConnectTo("127.0.0.1", 8900, true)
+
+	// 连接到外网测试服务器
+	// reg.ConnectToDev()
+
+	// 连接到生产环境(国内项目)
+	//reg.ConnectToProduce()
+
+	// 连接到生产环境(海外项目)
+	// reg.ConnectToGlobal()
 }

@@ -2,12 +2,33 @@ package service
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	. "time"
 
 	"crypto/sha1"
 	"encoding/hex"
 )
+
+type IRegister interface {
+	GetApp() string
+	GetKey() string
+	GetName() string
+	GetVersion() string
+	GetFunctions() []string
+	SetRegSuccess(status bool)
+	SetServiceData(data interface{}) error
+	CloseClient()
+	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{}
+	ILogger
+}
+
+type ILogger interface {
+	Info(arg0 interface{}, args ...interface{})
+	Debug(arg0 interface{}, args ...interface{})
+	Warn(arg0 interface{}, args ...interface{})
+	Error(arg0 interface{}, args ...interface{})
+}
 
 type SysService struct {
 	Register IRegister
@@ -94,7 +115,6 @@ func Sha1(str string) string {
 }
 
 func IntToStr(data interface{}) string {
-
 	switch value := data.(type) {
 	case int:
 		return strconv.Itoa(value) // int to str

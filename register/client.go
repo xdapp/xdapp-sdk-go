@@ -2,41 +2,45 @@ package register
 
 import (
 	"crypto/tls"
-	"net"
-	"time"
+	"fmt"
 	"github.com/leesper/tao"
+	"net"
+	"sync"
+	"time"
 )
 
 var (
-	request Request
-	requestId *tao.AtomicInt64	// 请求id 原子递增
+	request        Request
+	requestId      *tao.AtomicInt64 // 请求id 原子递增
+	receiveBuff     *safeReceiveBuff
+	receiveChanMap = make(map[string]chan interface{})
 )
 
-// tcp标志位
-const (
-	FLAG_SYS_MSG     = 1 // 来自系统调用的消息请求
-	FLAG_RESULT_MODE = 2 // 请求返回模式，表明这是一个RPC结果返回
-	FLAG_FINISH      = 4 // 是否消息完成，用在消息返回模式里，表明RPC返回内容结束
-	FLAG_TRANSPORT   = 8 // 转发浏览器RPC请求，表明这是一个来自浏览器的请求
-)
+type safeReceiveBuff struct {
+	bufMap map[string][]byte
+	mu    sync.Mutex
+}
 
-func NewClient(host string) *tao.ClientConn {
+func init() {
+	receiveBuff = &safeReceiveBuff{}
+}
+
+func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 	if host == "" {
-		Logger.Warn("缺少tcp host")
+		panic("缺少tcp host")
 	}
 
-	c := doConnect(host)
+	c := doConnect(host, port, ssl)
 	onConnect := tao.OnConnectOption(func(c tao.WriteCloser) bool {
 		return true
 	})
 
-	onError := tao.OnErrorOption(func(c tao.WriteCloser) {
-	})
+	onError := tao.OnErrorOption(func(c tao.WriteCloser) {})
 
 	// 连接关闭 1秒后重连
 	onClose := tao.OnCloseOption(func(c tao.WriteCloser) {
 		Logger.Debug("RPC服务连接关闭，等待重新连接")
-		doConnect(host)
+		doConnect(host, port, ssl)
 	})
 
 	onMessage := tao.OnMessageOption(func(msg tao.Message, c tao.WriteCloser) {
@@ -47,11 +51,11 @@ func NewClient(host string) *tao.ClientConn {
 		context := msg.(Request).Context
 
 		// 返回数据的模式
-		if (flag & FLAG_RESULT_MODE) == FLAG_RESULT_MODE {
+		if (flag & FlagResultMode) == FlagResultMode {
 			sendRpcReceive(flag, header, body)
 			return
 		}
-		transportRpcRequest(flag, ver, header, context, RpcHandle(body))
+		transportRpcRequest(c, flag, ver, header, context, RpcHandle(body))
 	})
 
 	tlsConf := &tls.Config{
@@ -73,17 +77,57 @@ func NewClient(host string) *tao.ClientConn {
 	return tao.NewClientConn(0, c, options...)
 }
 
-func doConnect(host string) net.Conn {
-
-	conf := &tls.Config{
-		InsecureSkipVerify: true,
+func doConnect(host string, port int, ssl bool) net.Conn {
+	address := fmt.Sprintf("%s:%s", host, IntToStr(port))
+	if ssl {
+		c, err := tls.Dial("tcp", address, &tls.Config{
+			InsecureSkipVerify: true,
+		})
+		if err != nil {
+			Logger.Warn("RPC服务连接错误，等待重新连接" + err.Error())
+			time.Sleep(2 * time.Second)
+			return doConnect(host, port, ssl)
+		}
+		return c
+	} else {
+		c, err := net.Dial("tcp", address)
+		if err != nil {
+			Logger.Warn("RPC服务连接错误，等待重新连接" + err.Error())
+			time.Sleep(2 * time.Second)
+			return doConnect(host, port, ssl)
+		}
+		return c
 	}
-	c, err := tls.Dial("tcp", host, conf)
+}
 
-	if err != nil {
-		Logger.Warn("RPC服务连接错误，等待重新连接" + err.Error())
-		time.Sleep(2 * time.Second)
-		return doConnect(host)
+// rpc 请求返回
+func sendRpcReceive(flag byte, header Header, body[]byte) {
+	reqId := IntToStr(header.RequestId)
+	finish := (flag & FlagFinish) == FlagFinish
+
+	if finish == false {
+		receiveBuff.mu.Lock()
+		receiveBuff.bufMap[reqId] = body
+		receiveBuff.mu.Unlock()
+
+		// 30秒后清理数据
+		Conn.RunAt(time.Now().Add(RpcClearBufTime * time.Second), func(i time.Time, closer tao.WriteCloser) {
+			receiveBuff.mu.Lock()
+			delete(receiveBuff.bufMap, reqId)
+			receiveBuff.mu.Unlock()
+		})
+		return
+	} else if receiveBuff.bufMap[reqId] != nil {
+		body = BytesCombine(receiveBuff.bufMap[reqId], body)
+		receiveBuff.mu.Lock()
+		delete(receiveBuff.bufMap, reqId)
+		receiveBuff.mu.Unlock()
 	}
-	return c
+
+	if resp, error := rpcDecode(body); error != "" {
+		Logger.Warn(error)
+	} else {
+		receiveChanMap[reqId] = make (chan interface{})
+		receiveChanMap[reqId]<-resp
+	}
 }

@@ -2,8 +2,6 @@ package register
 
 import (
 	"bytes"
-	"encoding/binary"
-	"io"
 	"strconv"
 )
 
@@ -32,8 +30,4 @@ func Min(a, b int) int {
 // BytesCombine 多个[]byte数组合并成一个[]byte
 func BytesCombine(pBytes ...[]byte) []byte {
 	return bytes.Join(pBytes, []byte(""))
-}
-
-func pack(w io.Writer, data interface{}) error {
-	return binary.Write(w, binary.BigEndian, data)
 }

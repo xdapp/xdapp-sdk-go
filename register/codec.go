@@ -1,15 +1,13 @@
 package register
 
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"github.com/leesper/tao"
 	"io"
 	"net"
-	"fmt"
-	"bytes"
-	"errors"
-
-	"encoding/binary"
-
-	"github.com/leesper/tao"
 )
 
 //  标识   | 版本    | 长度    | 头信息       | 自定义内容    |  正文
@@ -48,13 +46,6 @@ type Header struct {
 	ContextLength byte
 }
 
-const (
-	PREFIX_LENGTH     = 6                             // Flag 1字节、 Ver 1字节、 Length 4字节
-	HEADER_LENGTH     = 17                            // 默认消息头长度, 不包括 PREFIX_LENGTH
-	CONTEXT_OFFSET    = PREFIX_LENGTH + HEADER_LENGTH // 自定义上下文内容所在位置，   23
-	SEND_CHUNK_LENGTH = 0x200000					  // 单次发送的包大小
-)
-
 var (
 	ErrReadByteEmpty = errors.New("读取数据为空")
 )
@@ -66,8 +57,8 @@ func (req Request) MessageNumber() int32 {
 
 func (req Request) Serialize() ([]byte, error) {
 	var writer = new(bytes.Buffer)
-	pack(writer, req.Prefix)
-	pack(writer, req.Header)
+	binary.Write(writer, binary.BigEndian, req.Prefix)
+	binary.Write(writer, binary.BigEndian, req.Header)
 	return BytesCombine(writer.Bytes(), req.Context, req.Body), nil
 }
 
@@ -87,7 +78,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 	errorChan := make(chan error)
 
 	go func(bc chan []byte, ec chan error) {
-		buf, err := readBytesByLength(raw, PREFIX_LENGTH)
+		buf, err := readBytesByLength(raw, PrefixLength)
 		if err != nil {
 			ec <- err
 			close(bc)
@@ -125,7 +116,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			return nil, errors.New(err)
 		}
 
-		headBytes, err := readBytesByLength(raw, HEADER_LENGTH); if err != nil {
+		headBytes, err := readBytesByLength(raw, HeaderLength); if err != nil {
 			return nil, err
 		}
 		headBuf := bytes.NewReader(headBytes)
@@ -138,7 +129,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			return nil, err
 		}
 
-		body, err := readBytesByLength(raw, int(prefix.Length) - HEADER_LENGTH - ctxLen); if err != nil {
+		body, err := readBytesByLength(raw, int(prefix.Length) - HeaderLength - ctxLen); if err != nil {
 			return nil, err
 		}
 
@@ -161,31 +152,31 @@ func (req Request) Encode(msg tao.Message) ([]byte, error) {
 }
 
 // 转发消息到其它服务
-func transportRpcRequest(flag byte, ver byte, header Header, context []byte, body[]byte) {
+func transportRpcRequest(c tao.WriteCloser, flag byte, ver byte, header Header, context []byte, body[]byte) {
 
 	totalLen := len(body)
-	flag = flag | FLAG_RESULT_MODE
+	flag = flag | FlagResultMode
 
-	if totalLen < SEND_CHUNK_LENGTH {
-		prefix := Prefix{uint8(flag | FLAG_FINISH),ver,uint32(HEADER_LENGTH + len(context) + len(body))}
-		sendRequest(Request{prefix, header, context, body});return
+	if totalLen < SendChunkLength {
+		prefix := Prefix{uint8(flag | FlagFinish),ver,uint32(HeaderLength + len(context) + len(body))}
+		sendRequest(c, Request{prefix, header, context, body});return
 	}
 
 	// 大于 拆包分段发送
-	for i := 0; i < totalLen; i += SEND_CHUNK_LENGTH {
-		sendLen := Min(SEND_CHUNK_LENGTH, totalLen - i)
+	for i := 0; i < totalLen; i += SendChunkLength {
+		sendLen := Min(SendChunkLength, totalLen - i)
 		if totalLen - i == sendLen {
-			flag |= FLAG_FINISH
+			flag |= FlagFinish
 		}
 
 		chunk := body[i:sendLen]
-		prefix := Prefix{uint8(flag),ver,uint32(HEADER_LENGTH + len(context) + len(chunk))}
-		sendRequest(Request{prefix, header, context, chunk})
+		prefix := Prefix{uint8(flag),ver,uint32(HeaderLength + len(context) + len(chunk))}
+		sendRequest(c, Request{prefix, header, context, chunk})
 	}
 }
 
-func sendRequest(request Request) {
-	if err := Conn.Write(request); err != nil {
+func sendRequest(c tao.WriteCloser, request Request) {
+	if err := c.Write(request); err != nil {
 		Logger.Error("error", err)
 	}
 }

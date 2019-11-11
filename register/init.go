@@ -4,10 +4,12 @@ import (
 	"errors"
 	"github.com/alecthomas/log4go"
 	"github.com/leesper/tao"
+	"os"
+	"os/signal"
 	"reflect"
+	"syscall"
 )
 
-// 可配置参数
 type Config struct {
 	Host             string   // 服务器域名和端口
 	SSl              bool     // 是否SSL连接
@@ -20,99 +22,142 @@ type Config struct {
 	PackageMaxLength int      // tcp最大长度
 }
 
-// tcp配置
-type TcpConfig struct {
-}
+type TcpConfig struct {}
 
-type SRegister struct {
-	Conn        *tao.ClientConn              // tcp客户端连接
-	Logger      *log4go.Logger               // log 日志
-	RegSuccess  bool                         // 注册成功标志
-	ServiceData map[interface{}]interface{} 		 // console 注册成功返回的页面服务器信息
+type register struct {
+	cfg         *Config
+	Conn        *tao.ClientConn               // tcp客户端连接
+	Logger      *log4go.Logger                // log 日志
+	RegSuccess  bool                          // 注册成功标志
+	ServiceData map[interface{}]interface{}   // console 注册成功返回的页面服务器信息
 }
 
 const (
-	DEFAULT_VER                = 1
-	DEFAULT_HOST               = "www.xdapp.com:8900"
-	DEFAULT_SSL                = true
-	DEFAULT_APP                = "test"
-	DEFAULT_NAME               = "console"
-	DEFAULT_KEY                = ""
-	DEFAULT_LOG_NAME           = "test.log"
+	DefaultVer              = 1
+	DefaultApp              = "test"
+	DefaultName             = "console"
+	DefaultKey              = ""
+	DefaultLogName          = "test.log"
+	DefaultPackageMaxLength = 0x21000 // 最大的长度
 
-	DEFAULT_PACKAGE_MAX_LENGTH = 0x21000 // 最大的长度
+	FlagSysMsg     = 1 // 来自系统调用的消息请求
+	FlagResultMode = 2 // 请求返回模式，表明这是一个RPC结果返回
+	FlagFinish     = 4 // 是否消息完成，用在消息返回模式里，表明RPC返回内容结束
+	FlagTransport  = 8 // 转发浏览器RPC请求，表明这是一个来自浏览器的请求
+
+	PrefixLength    = 6                           // Flag 1字节、 Ver 1字节、 Length 4字节
+	HeaderLength    = 17                          // 默认消息头长度, 不包括 PrefixLength
+	ContextOffset   = PrefixLength + HeaderLength // 自定义上下文内容所在位置，   23
+	SendChunkLength = 0x200000                    // 单次发送的包大小
 )
 
 var (
-	config Config
+	config *Config
 	Conn   *tao.ClientConn // tcp客户端连接
 	Logger *log4go.Logger  // log 日志
+
+	ProductionServer = map[string]interface{}{
+		"host": "service-prod.xdapp.com", "port": "8900", "tts": true}
+
+	DevServer = map[string]interface{}{
+		"host": "dev.xdapp.com", "port": "8100", "tts": false}
+
+	GlobalServer = map[string]interface{}{
+		"host": "service-gcp.xdapp.com", "port": "8900", "tts": true}
 )
 
-/**
-创建
-*/
-func New(rfg Config) (*SRegister, error) {
+func New(cfg *Config) (*register, error) {
 
-	config = rfg
-	if config.Host == "" {
-		config.Host = DEFAULT_HOST
-	}
-	if config.SSl == false {
-		config.SSl = DEFAULT_SSL
-	}
-	if config.App == ""  {
-		config.App = DEFAULT_APP
-	}
-	if config.Name == ""  {
-		config.Name = DEFAULT_NAME
-	}
-	if config.Key == ""  {
-		config.Name = DEFAULT_KEY
-	}
-	if config.Version == 0  {
-		config.Version = DEFAULT_VER
-	}
-	if config.PackageMaxLength == 0 {
-		config.PackageMaxLength = DEFAULT_PACKAGE_MAX_LENGTH
-	}
+	config = cfg
 
-	Logger = NewLog4go(config.IsDebug, config.LogName)
-	Conn = NewClient(config.Host)
+	if cfg.App == ""  {
+		cfg.App = DefaultApp
+	}
+	if cfg.Name == ""  {
+		cfg.Name = DefaultName
+	}
+	if cfg.Key == ""  {
 
-	return &SRegister{Conn,Logger,false,nil,}, nil
+		cfg.Key = DefaultKey
+	}
+	if cfg.Version == 0  {
+		cfg.Version = DefaultVer
+	}
+	if cfg.PackageMaxLength == 0 {
+		cfg.PackageMaxLength = DefaultPackageMaxLength
+	}
+	Logger = NewLog4go(cfg.IsDebug, cfg.LogName)
+
+	return &register{
+		cfg:         cfg,
+		Logger:      Logger,
+		RegSuccess:  false,
+		ServiceData: nil,
+	}, nil
 }
 
-func (reg *SRegister) getKey() string {
+func (reg *register) ConnectToProduce() {
+	host := ProductionServer["host"].(string)
+	port := ProductionServer["port"].(int)
+	ssl := ProductionServer["ssl"].(bool)
+	reg.ConnectTo(host, port, ssl)
+}
 
+func (reg *register) ConnectToGlobal() {
+	host := GlobalServer["host"].(string)
+	port := GlobalServer["port"].(int)
+	ssl := GlobalServer["ssl"].(bool)
+	reg.ConnectTo(host, port, ssl)
+}
+
+func (reg *register) connectToDev() {
+	host := DevServer["host"].(string)
+	port := DevServer["port"].(int)
+	ssl := DevServer["ssl"].(bool)
+	reg.ConnectTo(host, port, ssl)
+}
+
+func (reg *register) ConnectTo(host string, port int, ssl bool) {
+	Conn = NewClient(host, port, ssl)
+	reg.Conn = Conn
+	reg.Conn.Start()
+	defer reg.Conn.Close()
+
+	notifier := make(chan os.Signal, 1)
+	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
+	<-notifier
+	os.Exit(0)
+}
+
+func (reg *register) getKey() string {
 	pageSvr := reg.ServiceData["pageServer"].(map[string]string)
 	return pageSvr["key"]
 }
 
-func (reg *SRegister) getHost() string {
+func (reg *register) getHost() string {
 	pageSvr := reg.ServiceData["pageServer"].(map[string]string)
 	return pageSvr["host"]
 }
 
-func (reg *SRegister) GetApp() string {
-	return config.App
+func (reg *register) GetApp() string {
+	return reg.cfg.App
 }
 
-func (reg *SRegister) GetName() string {
-	return config.Name
+func (reg *register) GetName() string {
+	return reg.cfg.Name
 }
-func (reg *SRegister) GetVersion() string {
-	return IntToStr(config.Version)
+func (reg *register) GetVersion() string {
+	return IntToStr(reg.cfg.Version)
 }
-func (reg *SRegister) GetKey() string {
-	return config.Key
+func (reg *register) GetKey() string {
+	return reg.cfg.Key
 }
 
-func (reg *SRegister) SetRegSuccess(isReg bool) {
+func (reg *register) SetRegSuccess(isReg bool) {
 	reg.RegSuccess = isReg
 }
 
-func (reg *SRegister) SetServiceData(data interface{}) error {
+func (reg *register) SetServiceData(data interface{}) error {
 	svrData, ok := data.(map[interface{}]interface{})
 	if !ok {
 		return errors.New("regOK serviceData is illegal")
@@ -121,32 +166,32 @@ func (reg *SRegister) SetServiceData(data interface{}) error {
 	return nil
 }
 
-func (reg *SRegister) GetFunctions() []string {
+func (reg *register) GetFunctions() []string {
 	return GetHproseAddedFunc()
 }
 
-func (reg *SRegister) CloseClient() {
+func (reg *register) CloseClient() {
 	reg.Conn.Close()
 }
 
-func (reg *SRegister) Info(arg0 interface{}, args ...interface{}) {
+func (reg *register) Info(arg0 interface{}, args ...interface{}) {
 	reg.Logger.Info(arg0, args...)
 }
 
-func (reg *SRegister) Debug(arg0 interface{}, args ...interface{}) {
+func (reg *register) Debug(arg0 interface{}, args ...interface{}) {
 	reg.Logger.Debug(arg0, args...)
 }
 
-func (reg *SRegister) Warn(arg0 interface{}, args ...interface{}) {
+func (reg *register) Warn(arg0 interface{}, args ...interface{}) {
 	reg.Logger.Warn(arg0, args...)
 }
 
-func (reg *SRegister) Error(arg0 interface{}, args ...interface{}) {
+func (reg *register) Error(arg0 interface{}, args ...interface{}) {
 	reg.Logger.Error(arg0, args...)
 }
 
 // 调取rpc服务
-func (reg *SRegister) RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
+func (reg *register) RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
 	var serviceId uint32
 	if _, ok := cfg["serviceId"]; ok {
 		serviceId = cfg["serviceId"]
@@ -156,21 +201,13 @@ func (reg *SRegister) RpcCall(name string, args []reflect.Value, namespace strin
 		adminId = cfg["adminId"]
 	}
 
-	rpc := NewRpcClient(RpcClient{
-		NameSpace: namespace,
-		ServiceId: serviceId,
-		AdminId: adminId,
-	})
-
+	rpc := NewRpcClient(reg.Conn, serviceId, adminId, 0, namespace)
 	return rpc.Call(name, args)
 }
 
-/**
-log4go对象设置
-*/
 func NewLog4go(isDebug bool, logName string) *log4go.Logger {
 	if logName == "" {
-		logName = DEFAULT_LOG_NAME
+		logName = DefaultLogName
 	}
 
 	log4 := make(log4go.Logger)

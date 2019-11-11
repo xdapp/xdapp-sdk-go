@@ -1,9 +1,9 @@
 package register
 
 import (
-	"reflect"
 	"github.com/hprose/hprose-golang/io"
 	"github.com/hprose/hprose-golang/rpc"
+	"reflect"
 )
 
 var (
@@ -36,9 +36,10 @@ func AddInstanceMethods(obj interface{}, namespace string) {
 	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: namespace})
 }
 
-/**
-rpc序列化
- */
+func AddFunction(name string, function interface{}, namespace string) {
+	HproseService.AddFunction(name, function, rpc.Options{NameSpace: namespace})
+}
+
 func rpcEncode(name string, args []reflect.Value) []byte {
 	writer := io.NewWriter(false)
 	writer.WriteByte(io.TagCall)
@@ -49,7 +50,6 @@ func rpcEncode(name string, args []reflect.Value) []byte {
 	return writer.Bytes()
 }
 
-// rpc反序列化
 func rpcDecode(data []byte) (interface{}, string) {
 	reader := io.AcquireReader(data, false)
 	defer io.ReleaseReader(reader)
