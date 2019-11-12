@@ -57,13 +57,13 @@ var (
 	Logger *log4go.Logger  // log 日志
 
 	ProductionServer = map[string]interface{}{
-		"host": "service-prod.xdapp.com", "port": "8900", "tts": true}
+		"host": "service-prod.xdapp.com", "port": 8900, "ssl": true}
 
 	DevServer = map[string]interface{}{
-		"host": "dev.xdapp.com", "port": "8100", "tts": false}
+		"host": "dev.xdapp.com", "port": 8100, "ssl": true}
 
 	GlobalServer = map[string]interface{}{
-		"host": "service-gcp.xdapp.com", "port": "8900", "tts": true}
+		"host": "service-gcp.xdapp.com", "port": 8900, "ssl": true}
 )
 
 func New(cfg *Config) (*register, error) {
