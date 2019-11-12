@@ -110,7 +110,7 @@ func (reg *register) ConnectToGlobal() {
 	reg.ConnectTo(host, port, ssl)
 }
 
-func (reg *register) connectToDev() {
+func (reg *register) ConnectToDev() {
 	host := DevServer["host"].(string)
 	port := DevServer["port"].(int)
 	ssl := DevServer["ssl"].(bool)
