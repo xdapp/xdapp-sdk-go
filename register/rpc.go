@@ -1,6 +1,7 @@
 package register
 
 import (
+	"fmt"
 	"github.com/hprose/hprose-golang/io"
 	"github.com/hprose/hprose-golang/rpc"
 	"reflect"
@@ -32,12 +33,24 @@ func GetHproseAddedFunc() []string {
 	return HproseService.MethodNames
 }
 
-func AddInstanceMethods(obj interface{}, namespace string) {
-	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: namespace})
+func AddFunction(name string, function interface{}) {
+	HproseService.AddFunction(name, function)
 }
 
-func AddFunction(name string, function interface{}, namespace string) {
-	HproseService.AddFunction(name, function, rpc.Options{NameSpace: namespace})
+// 注册一个前端页面可访问的方法
+func AddSysFunction(obj interface{}) {
+	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: "sys"})
+}
+
+// 注册一个前端页面可访问的方法
+func AddWebFunction(name string, function interface{}) {
+	funcName := fmt.Sprintf("%s_%s", config.Name, name)
+	HproseService.AddFunction(funcName, function)
+}
+
+func AddWebInstanceMethods(obj interface{}, namespace string) {
+	nsName := fmt.Sprintf("%s_%s", config.Name, namespace)
+	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: nsName})
 }
 
 func rpcEncode(name string, args []reflect.Value) []byte {
