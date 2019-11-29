@@ -1,4 +1,4 @@
-module xdapp-sdk-go
+module github.com/xdapp/xdapp-sdk-go
 
 go 1.13
 
