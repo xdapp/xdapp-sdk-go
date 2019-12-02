@@ -33,24 +33,25 @@ func GetHproseAddedFunc() []string {
 	return HproseService.MethodNames
 }
 
+// Simple 简单数据 https://github.com/hprose/hprose-golang/wiki/Hprose-%E6%9C%8D%E5%8A%A1%E5%99%A8
 func AddFunction(name string, function interface{}) {
-	HproseService.AddFunction(name, function)
+	HproseService.AddFunction(name, function, rpc.Options{Simple: true})
 }
 
 // 注册一个前端页面可访问的方法
 func AddSysFunction(obj interface{}) {
-	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: "sys"})
+	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: "sys", Simple: true})
 }
 
 // 注册一个前端页面可访问的方法
 func AddWebFunction(name string, function interface{}) {
 	funcName := fmt.Sprintf("%s_%s", config.Name, name)
-	HproseService.AddFunction(funcName, function)
+	HproseService.AddFunction(funcName, function, rpc.Options{Simple: true})
 }
 
 func AddWebInstanceMethods(obj interface{}, namespace string) {
 	nsName := fmt.Sprintf("%s_%s", config.Name, namespace)
-	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: nsName})
+	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: nsName, Simple: true})
 }
 
 func rpcEncode(name string, args []reflect.Value) []byte {
