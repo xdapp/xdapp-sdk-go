@@ -58,18 +58,21 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 		transportRpcRequest(c, flag, ver, header, context, RpcHandle(body))
 	})
 
-	tlsConf := &tls.Config{
-		InsecureSkipVerify: true,
-	}
 	requestId = tao.NewAtomicInt64(0)
 	options := []tao.ServerOption{
 		onConnect,
 		onError,
 		onClose,
 		onMessage,
-		tao.TLSCredsOption(tlsConf),
 		tao.ReconnectOption(),
 		tao.CustomCodecOption(request),
+	}
+	
+	if ssl {
+		tlsConf := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		options = append(options, tao.TLSCredsOption(tlsConf))
 	}
 
 	tao.Register(request.MessageNumber(), Unserialize, nil)
