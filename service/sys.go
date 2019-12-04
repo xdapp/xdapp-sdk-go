@@ -1,13 +1,13 @@
 package service
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	. "time"
-
-	"crypto/sha1"
-	"encoding/hex"
 )
 
 type IRegister interface {
@@ -59,9 +59,12 @@ func (service *SysService) Menu() {
 
 }
 
+// 注册回调错误不用重试直接退出
 func (service *SysService) RegErr(msg string, data interface{}) {
 	service.Register.SetRegSuccess(false)
 	service.Register.Error("注册失败", msg, data)
+	Sleep(50*Millisecond)
+	os.Exit(0)
 }
 
 func (service *SysService) RegOk(data interface{}, time int, rand string, hash string) {
