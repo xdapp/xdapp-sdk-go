@@ -60,13 +60,13 @@ Example
 package main
 
 import (
-	"github.com/xdapp/xdapp-sdk-go/register"
-	"github.com/xdapp/xdapp-sdk-go/service"
+    "github.com/xdapp/xdapp-sdk-go/register"
+    "github.com/xdapp/xdapp-sdk-go/service"
 )
 
 // 测试注册服务
 func main() {
-	reg, err := register.New(&register.Config{
+    reg, err := register.New(&register.Config{
         App: "demo",
         Name: "name",
         Key: "aaaaaaaaaa",
@@ -76,11 +76,11 @@ func main() {
         panic(err)
     }
 
-	// 注册系统rpc方法 （必加, 其中 sys 为服务前缀，请求方法为 sys_xxx）
-	register.AddSysFunction(
+    // 注册系统rpc方法 （必加, 其中 sys 为服务前缀，请求方法为 sys_xxx）
+    register.AddSysFunction(
         &service.SysService{Register: reg})
 
-	/**
+    /**
      * 注册一个前端页面可访问的rpc方法 （其中 test 为服务前缀，请求方法为 hello）
      * (请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
      * 等同于
@@ -96,13 +96,13 @@ func main() {
 
     reg.ConnectTo("127.0.0.1", 8900, false)
 
-	// 连接到外网测试服务器
-	//reg.ConnectToProduce()
+    // 连接到外网测试服务器
+    //reg.ConnectToProduce()
 
-	// 连接到生产环境(国内项目)
-	//reg.ConnectToProduce()
+    // 连接到生产环境(国内项目)
+    //reg.ConnectToProduce()
 
-	// 连接到生产环境(海外项目)
-	// reg.ConnectToGlobal()
+    // 连接到生产环境(海外项目)
+    // reg.ConnectToGlobal()
 }
 ```
