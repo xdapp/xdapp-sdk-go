@@ -8,14 +8,12 @@ import (
 )
 
 var (
-	HproseService *rpc.TCPService		 // rpc 服务
-	HproseContext *rpc.SocketContext	 // 上下文
+	HproseService *rpc.TCPService
+	HproseContext *rpc.SocketContext
 )
 
 func init() {
 	HproseService = rpc.NewTCPService()
-	HproseContext = new(rpc.SocketContext)
-	HproseContext.InitServiceContext(HproseService)
 }
 
 // 屏蔽列表输出
@@ -25,6 +23,8 @@ func DoFunctionList() string {
 
 // 执行结果
 func RpcHandle(data []byte) []byte {
+	HproseContext = new(rpc.SocketContext)
+	HproseContext.InitServiceContext(HproseService)
 	return HproseService.Handle(data, HproseContext)
 }
 

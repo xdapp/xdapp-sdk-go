@@ -3,6 +3,7 @@ package register
 import (
 	"errors"
 	"github.com/alecthomas/log4go"
+	"github.com/hprose/hprose-golang/rpc"
 	"github.com/leesper/tao"
 	"os"
 	"os/signal"
@@ -11,8 +12,6 @@ import (
 )
 
 type Config struct {
-	Host             string   // 服务器域名和端口
-	SSl              bool     // 是否SSL连接
 	App              string   // 游戏简称
 	Name             string   // 游戏名字
 	Key              string   // 服务器秘钥
@@ -122,6 +121,11 @@ func (reg *register) ConnectTo(host string, port int, ssl bool) {
 	reg.Conn = Conn
 	reg.Conn.Start()
 	defer reg.Conn.Close()
+
+	reg.Logger.Info("已增加的rpc列表", GetHproseAddedFunc())
+	HproseService.AddMissingMethod(func(name string, args []reflect.Value, context rpc.Context) (result []reflect.Value, err error) {
+		return nil, errors.New("The method '" + name + "' is not implemented.")
+	})
 
 	notifier := make(chan os.Signal, 1)
 	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
