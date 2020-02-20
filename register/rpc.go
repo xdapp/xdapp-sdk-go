@@ -50,7 +50,10 @@ func AddWebFunction(name string, function interface{}) {
 }
 
 func AddWebInstanceMethods(obj interface{}, namespace string) {
-	nsName := fmt.Sprintf("%s_%s", config.Name, namespace)
+	nsName := config.Name
+	if namespace != "" {
+		nsName = fmt.Sprintf("%s_%s", config.Name, namespace)
+	}
 	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: nsName, Simple: true})
 }
 

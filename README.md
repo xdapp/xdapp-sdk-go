@@ -66,9 +66,10 @@ import (
 
 // 测试注册服务
 func main() {
+    // 其中 demo 为项目名，gm 为服务名，aaaaaaaaaa 为密钥
     reg, err := register.New(&register.Config{
         App: "demo",
-        Name: "name",
+        Name: "gm",
         Key: "aaaaaaaaaa",
         IsDebug: false,
     })
@@ -76,20 +77,23 @@ func main() {
         panic(err)
     }
 
-    // 注册系统rpc方法 （必加, 其中 sys 为服务前缀，请求方法为 sys_xxx）
+    // 注册系统rpc方法 （必加 用于sdk与xdapp服务注册）
     register.AddSysFunction(
         &service.SysService{Register: reg})
 
     /**
-     * 注册一个前端页面可访问的rpc方法 （其中 test 为服务前缀，请求方法为 hello）
-     * (请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
+     * 注册单个前端页面可访问的rpc方法 （内部会加上服务名gm作前缀）
+     * (!!! 请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
      * 等同于
      * register.AddFunction("gm_hello", func() string {return "hello world"})
+     * 页面请求方法 hello
      */
     register.AddWebFunction("hello", func() string {return "hello world"})
 
     /**
-     * 注册一个前端页面可访问的rpc方法 （其中 test 为服务前缀，请求方法为 test_xxx）
+	 * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
+     * namespace: test, 页面请求方法 test_xxx
+     * namespace可传空,  页面请求方法 xxx
      */
     register.AddWebInstanceMethods(
         &service.TestService{Name: "test"}, "test")
