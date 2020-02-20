@@ -91,7 +91,7 @@ func main() {
     register.AddWebFunction("hello", func() string {return "hello world"})
 
     /**
-	 * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
+     * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
      * namespace: test, 页面请求方法 test_xxx
      * namespace可传空,  页面请求方法 xxx
      */
