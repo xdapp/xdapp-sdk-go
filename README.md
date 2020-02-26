@@ -101,7 +101,7 @@ func main() {
     reg.ConnectTo("127.0.0.1", 8900, false)
 
     // 连接到外网测试服务器
-    //reg.ConnectToProduce()
+    //reg.ConnectToDev()
 
     // 连接到生产环境(国内项目)
     //reg.ConnectToProduce()
