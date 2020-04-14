@@ -54,6 +54,20 @@ go func() {
 ```
 
 
+关于 `context` 上下文对象
+----------
+
+在RPC请求时，如果需要获取到请求时的管理员ID等等参数，可以用此获取，如上面 `hello` 的例子，通过 `context := register.getCurrentContext()` 可获取到 `context`，包括：
+
+参数         |   说明               | 获取
+------------|---------------------|---------------------
+requestId   | 请求的ID             | context.GetInterface('requestId')
+appId       | 请求的应用ID           | context.GetInterface('appId')
+serviceId   | 请求发起的服务ID，0表示XDApp系统请求，1表示来自浏览器的请求    | context.GetInterface('serviceId')
+adminId     | 请求的管理员ID，0表示系统请求 context.GetInterface('adminId')  |  context.GetInterface('adminId')
+userdata    | 默认 stdClass 对象，可以自行设置参数   | context.UserData()
+
+
 Example
 ----------
 ```golang

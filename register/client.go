@@ -55,7 +55,7 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 			sendRpcReceive(flag, header, body)
 			return
 		}
-		transportRpcRequest(c, flag, ver, header, context, RpcHandle(body))
+		transportRpcRequest(c, flag, ver, header, context, RpcHandle(header, body))
 	})
 
 	requestId = tao.NewAtomicInt64(0)

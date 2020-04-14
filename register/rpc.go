@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	HproseService *rpc.TCPService
-	HproseContext *rpc.SocketContext
+	hproseService *rpc.TCPService
+	hproseContext *rpc.SocketContext
 )
 
 func init() {
-	HproseService = rpc.NewTCPService()
+	hproseService = rpc.NewTCPService()
 }
 
 // 屏蔽列表输出
@@ -21,32 +21,41 @@ func DoFunctionList() string {
 	return "Fa{}z"
 }
 
+// 获取当前上下文
+func GetCurrentContext() *rpc.SocketContext {
+	return hproseContext
+}
+
 // 执行结果
-func RpcHandle(data []byte) []byte {
-	HproseContext = new(rpc.SocketContext)
-	HproseContext.InitServiceContext(HproseService)
-	return HproseService.Handle(data, HproseContext)
+func RpcHandle(header Header, data []byte) []byte {
+	hproseContext = new(rpc.SocketContext)
+	hproseContext.InitServiceContext(hproseService)
+	hproseContext.Set("appId", header.AppId)
+	hproseContext.Set("serviceId", header.ServiceId)
+	hproseContext.Set("requestId", header.RequestId)
+	hproseContext.Set("adminId", header.AdminId)
+	return hproseService.Handle(data, hproseContext)
 }
 
 // 已注册的rpc方法
 func GetHproseAddedFunc() []string {
-	return HproseService.MethodNames
+	return hproseService.MethodNames
 }
 
 // Simple 简单数据 https://github.com/hprose/hprose-golang/wiki/Hprose-%E6%9C%8D%E5%8A%A1%E5%99%A8
 func AddFunction(name string, function interface{}) {
-	HproseService.AddFunction(name, function, rpc.Options{Simple: true})
+	hproseService.AddFunction(name, function, rpc.Options{Simple: true})
 }
 
 // 注册一个前端页面可访问的方法
 func AddSysFunction(obj interface{}) {
-	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: "sys", Simple: true})
+	hproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: "sys", Simple: true})
 }
 
 // 注册一个前端页面可访问的方法
 func AddWebFunction(name string, function interface{}) {
 	funcName := fmt.Sprintf("%s_%s", config.Name, name)
-	HproseService.AddFunction(funcName, function, rpc.Options{Simple: true})
+	hproseService.AddFunction(funcName, function, rpc.Options{Simple: true})
 }
 
 func AddWebInstanceMethods(obj interface{}, namespace string) {
@@ -54,7 +63,7 @@ func AddWebInstanceMethods(obj interface{}, namespace string) {
 	if namespace != "" {
 		nsName = fmt.Sprintf("%s_%s", config.Name, namespace)
 	}
-	HproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: nsName, Simple: true})
+	hproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: nsName, Simple: true})
 }
 
 func rpcEncode(name string, args []reflect.Value) []byte {

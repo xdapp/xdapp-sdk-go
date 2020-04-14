@@ -123,7 +123,7 @@ func (reg *register) ConnectTo(host string, port int, ssl bool) {
 	defer reg.Conn.Close()
 
 	reg.Logger.Info("已增加的rpc列表", GetHproseAddedFunc())
-	HproseService.AddMissingMethod(func(name string, args []reflect.Value, context rpc.Context) (result []reflect.Value, err error) {
+	hproseService.AddMissingMethod(func(name string, args []reflect.Value, context rpc.Context) (result []reflect.Value, err error) {
 		return nil, errors.New("The method '" + name + "' is not implemented.")
 	})
 
