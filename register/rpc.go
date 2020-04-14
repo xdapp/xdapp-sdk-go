@@ -26,6 +26,30 @@ func GetCurrentContext() *rpc.SocketContext {
 	return hproseContext
 }
 
+func GetCurrentAdminId() uint32 {
+	id := hproseContext.GetInterface("adminId")
+	res, _ := id.(uint32)
+	return res
+}
+
+func GetCurrentAppId() uint32 {
+	id := hproseContext.GetInterface("appId")
+	res, _ := id.(uint32)
+	return res
+}
+
+func GetCurrentServiceId() uint32 {
+	id := hproseContext.GetInterface("serviceId")
+	res, _ := id.(uint32)
+	return res
+}
+
+func GetCurrentRequestId() uint32 {
+	id := hproseContext.GetInterface("requestId")
+	res, _ := id.(uint32)
+	return res
+}
+
 // 执行结果
 func RpcHandle(header Header, data []byte) []byte {
 	hproseContext = new(rpc.SocketContext)
