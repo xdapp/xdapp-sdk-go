@@ -76,6 +76,11 @@ func AddSysFunction(obj interface{}) {
 	hproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: "sys", Simple: true})
 }
 
+// 增加过滤器
+func AddFilter(filter ...rpc.Filter) {
+	hproseService.AddFilter(filter ...)
+}
+
 // 注册一个前端页面可访问的方法
 func AddWebFunction(name string, function interface{}) {
 	funcName := fmt.Sprintf("%s_%s", config.Name, name)
