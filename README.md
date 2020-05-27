@@ -131,11 +131,11 @@ func main() {
 
 SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求，需要注意的是Console后台的服务名将为协议包根目录名称。
 
-```
-    // grpc service IP地址
-    address := "localhost:8080"
-    // grpc协议描述文件，参考：https://github.com/fullstorydev/grpcurl#protoset-files
-    descriptor := []string{"./example/service.protoset"}
+```golang
+	// grpc service IP地址
+	address := "localhost:8080"
+	// grpc协议描述文件，参考：https://github.com/fullstorydev/grpcurl#protoset-files
+	descriptor := []string{"./example/service.protoset"}
 	proxy, err := middleware.NewGRPCProxyMiddleware(address, descriptor, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
