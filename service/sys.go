@@ -63,7 +63,7 @@ func (service *SysService) Menu() {
 // 注册回调错误不用重试直接退出
 func (service *SysService) RegErr(msg string, data interface{}) {
 	service.Register.SetRegSuccess(false)
-	service.Register.Error("注册失败", msg, data)
+	service.Register.Error(fmt.Sprintf("注册失败. msg: %s", msg))
 	Sleep(50 * Millisecond)
 	os.Exit(0)
 }
