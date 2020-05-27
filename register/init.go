@@ -2,33 +2,35 @@ package register
 
 import (
 	"errors"
-	"github.com/alecthomas/log4go"
-	"github.com/hprose/hprose-golang/rpc"
-	"github.com/leesper/tao"
+	"fmt"
 	"os"
 	"os/signal"
 	"reflect"
 	"syscall"
+
+	"github.com/alecthomas/log4go"
+	"github.com/hprose/hprose-golang/rpc"
+	"github.com/leesper/tao"
 )
 
 type Config struct {
-	App              string   // 游戏简称
-	Name             string   // 游戏名字
-	Key              string   // 服务器秘钥
-	Version          int      // 服务器版本
-	IsDebug          bool     // 是否debug模式
-	LogName          string   // log文件名
-	PackageMaxLength int      // tcp最大长度
+	App              string // 游戏简称
+	Name             string // 游戏名字
+	Key              string // 服务器秘钥
+	Version          int    // 服务器版本
+	IsDebug          bool   // 是否debug模式
+	LogName          string // log文件名
+	PackageMaxLength int    // tcp最大长度
 }
 
-type TcpConfig struct {}
+type TcpConfig struct{}
 
 type register struct {
 	cfg         *Config
-	Conn        *tao.ClientConn               // tcp客户端连接
-	Logger      *log4go.Logger                // log 日志
-	RegSuccess  bool                          // 注册成功标志
-	ServiceData map[interface{}]interface{}   // console 注册成功返回的页面服务器信息
+	Conn        *tao.ClientConn             // tcp客户端连接
+	Logger      *log4go.Logger              // log 日志
+	RegSuccess  bool                        // 注册成功标志
+	ServiceData map[interface{}]interface{} // console 注册成功返回的页面服务器信息
 }
 
 const (
@@ -69,17 +71,17 @@ func New(cfg *Config) (*register, error) {
 
 	config = cfg
 
-	if cfg.App == ""  {
+	if cfg.App == "" {
 		cfg.App = DefaultApp
 	}
-	if cfg.Name == ""  {
+	if cfg.Name == "" {
 		cfg.Name = DefaultName
 	}
-	if cfg.Key == ""  {
+	if cfg.Key == "" {
 
 		cfg.Key = DefaultKey
 	}
-	if cfg.Version == 0  {
+	if cfg.Version == 0 {
 		cfg.Version = DefaultVer
 	}
 	if cfg.PackageMaxLength == 0 {
@@ -122,7 +124,7 @@ func (reg *register) ConnectTo(host string, port int, ssl bool) {
 	reg.Conn.Start()
 	defer reg.Conn.Close()
 
-	reg.Logger.Info("已增加的rpc列表", GetHproseAddedFunc())
+	reg.Logger.Info(fmt.Sprintf("已增加的rpc列表, %v", GetHproseAddedFunc()))
 	hproseService.AddMissingMethod(func(name string, args []reflect.Value, context rpc.Context) (result []reflect.Value, err error) {
 		return nil, errors.New("The method '" + name + "' is not implemented.")
 	})

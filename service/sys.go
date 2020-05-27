@@ -37,10 +37,11 @@ type SysService struct {
 // 注册服务，在连接到 console 微服务系统后，会收到一个 sys_reg() 的rpc回调
 func (service *SysService) Reg(time int64, rand string, hash string) map[string]interface{} {
 
-	curHash := Sha1(fmt.Sprintf("%s.%s.%s", IntToStr(time), rand, "xdapp.com")); if curHash != hash {
+	curHash := Sha1(fmt.Sprintf("%s.%s.%s", IntToStr(time), rand, "xdapp.com"))
+	if curHash != hash {
 		return map[string]interface{}{"status": false}
 	}
-	if Now().Unix() - time > 180 {
+	if Now().Unix()-time > 180 {
 		return map[string]interface{}{"status": false}
 	}
 
@@ -51,7 +52,7 @@ func (service *SysService) Reg(time int64, rand string, hash string) map[string]
 
 	time = Now().Unix()
 	hash = getHash(app, name, IntToStr(time), rand, key)
-	return map[string]interface{}{"status": true, "app": app, "name": name, "time": time, "rand": rand, "version": version,"hash": hash}
+	return map[string]interface{}{"status": true, "app": app, "name": name, "time": time, "rand": rand, "version": version, "hash": hash}
 }
 
 // 获取菜单列表
@@ -63,7 +64,7 @@ func (service *SysService) Menu() {
 func (service *SysService) RegErr(msg string, data interface{}) {
 	service.Register.SetRegSuccess(false)
 	service.Register.Error("注册失败", msg, data)
-	Sleep(50*Millisecond)
+	Sleep(50 * Millisecond)
 	os.Exit(0)
 }
 

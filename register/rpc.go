@@ -26,38 +26,30 @@ func GetCurrentContext() *rpc.SocketContext {
 	return hproseContext
 }
 
-func GetCurrentAdminId() uint32 {
-	id := hproseContext.GetInterface("adminId")
-	res, _ := id.(uint32)
-	return res
+func GetCurrentAdminId() uint {
+	return hproseContext.GetUInt("adminId")
 }
 
-func GetCurrentAppId() uint32 {
-	id := hproseContext.GetInterface("appId")
-	res, _ := id.(uint32)
-	return res
+func GetCurrentAppId() uint {
+	return hproseContext.GetUInt("appId")
 }
 
-func GetCurrentServiceId() uint32 {
-	id := hproseContext.GetInterface("serviceId")
-	res, _ := id.(uint32)
-	return res
+func GetCurrentServiceId() uint {
+	return hproseContext.GetUInt("serviceId")
 }
 
-func GetCurrentRequestId() uint32 {
-	id := hproseContext.GetInterface("requestId")
-	res, _ := id.(uint32)
-	return res
+func GetCurrentRequestId() uint {
+	return hproseContext.GetUInt("requestId")
 }
 
 // 执行结果
 func RpcHandle(header Header, data []byte) []byte {
 	hproseContext = new(rpc.SocketContext)
 	hproseContext.InitServiceContext(hproseService)
-	hproseContext.Set("appId", header.AppId)
-	hproseContext.Set("serviceId", header.ServiceId)
-	hproseContext.Set("requestId", header.RequestId)
-	hproseContext.Set("adminId", header.AdminId)
+	hproseContext.SetUInt("appId", uint(header.AppId))
+	hproseContext.SetUInt("serviceId", uint(header.ServiceId))
+	hproseContext.SetUInt("requestId", uint(header.RequestId))
+	hproseContext.SetUInt("adminId", uint(header.AdminId))
 	return hproseService.Handle(data, hproseContext)
 }
 
@@ -78,7 +70,7 @@ func AddSysFunction(obj interface{}) {
 
 // 增加过滤器
 func AddFilter(filter ...rpc.Filter) {
-	hproseService.AddFilter(filter ...)
+	hproseService.AddFilter(filter...)
 }
 
 // 注册一个前端页面可访问的方法
@@ -93,6 +85,10 @@ func AddWebInstanceMethods(obj interface{}, namespace string) {
 		nsName = fmt.Sprintf("%s_%s", config.Name, namespace)
 	}
 	hproseService.AddInstanceMethods(obj, rpc.Options{NameSpace: nsName, Simple: true})
+}
+
+func AddBeforeFilterHandler(handle ...rpc.FilterHandler) {
+	hproseService.AddBeforeFilterHandler(handle...)
 }
 
 func rpcEncode(name string, args []reflect.Value) []byte {

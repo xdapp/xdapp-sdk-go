@@ -3,22 +3,23 @@ package register
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/leesper/tao"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/leesper/tao"
 )
 
 var (
 	request        Request
 	requestId      *tao.AtomicInt64 // 请求id 原子递增
-	receiveBuff     *safeReceiveBuff
+	receiveBuff    *safeReceiveBuff
 	receiveChanMap = make(map[string]chan interface{})
 )
 
 type safeReceiveBuff struct {
 	bufMap map[string][]byte
-	mu    sync.Mutex
+	mu     sync.Mutex
 }
 
 func init() {
@@ -44,10 +45,10 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 	})
 
 	onMessage := tao.OnMessageOption(func(msg tao.Message, c tao.WriteCloser) {
-		ver     := msg.(Request).Ver
-		flag    := msg.(Request).Flag
-		body    := msg.(Request).Body
-		header  := msg.(Request).Header
+		ver := msg.(Request).Ver
+		flag := msg.(Request).Flag
+		body := msg.(Request).Body
+		header := msg.(Request).Header
 		context := msg.(Request).Context
 
 		// 返回数据的模式
@@ -67,7 +68,7 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 		tao.ReconnectOption(),
 		tao.CustomCodecOption(request),
 	}
-	
+
 	if ssl {
 		tlsConf := &tls.Config{
 			InsecureSkipVerify: true,
@@ -104,7 +105,7 @@ func doConnect(host string, port int, ssl bool) net.Conn {
 }
 
 // rpc 请求返回
-func sendRpcReceive(flag byte, header Header, body[]byte) {
+func sendRpcReceive(flag byte, header Header, body []byte) {
 	reqId := IntToStr(header.RequestId)
 	finish := (flag & FlagFinish) == FlagFinish
 
@@ -114,7 +115,7 @@ func sendRpcReceive(flag byte, header Header, body[]byte) {
 		receiveBuff.mu.Unlock()
 
 		// 30秒后清理数据
-		Conn.RunAt(time.Now().Add(RpcClearBufTime * time.Second), func(i time.Time, closer tao.WriteCloser) {
+		Conn.RunAt(time.Now().Add(RpcClearBufTime*time.Second), func(i time.Time, closer tao.WriteCloser) {
 			receiveBuff.mu.Lock()
 			delete(receiveBuff.bufMap, reqId)
 			receiveBuff.mu.Unlock()
@@ -130,7 +131,7 @@ func sendRpcReceive(flag byte, header Header, body[]byte) {
 	if resp, error := rpcDecode(body); error != "" {
 		Logger.Warn(error)
 	} else {
-		receiveChanMap[reqId] = make (chan interface{})
-		receiveChanMap[reqId]<-resp
+		receiveChanMap[reqId] = make(chan interface{})
+		receiveChanMap[reqId] <- resp
 	}
 }

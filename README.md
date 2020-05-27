@@ -19,6 +19,7 @@ rpc服务
 ----------
 - 接入后台console服务器
 - rpc注册service文件夹中服务 （区分sys系统服务 + 普通服务）
+- 支持转发GRPC协议
 
 服务器列表
 ----------
@@ -123,4 +124,36 @@ func main() {
     // 连接到生产环境(海外项目)
     // reg.ConnectToGlobal()
 }
+```
+
+转发GRPC协议
+----------
+
+SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求，需要注意的是Console后台的服务名将为协议包根目录名称。
+
+```
+    // grpc service IP地址
+    address := "localhost:8080"
+    // grpc协议描述文件，参考：https://github.com/fullstorydev/grpcurl#protoset-files
+    descriptor := []string{"./example/service.protoset"}
+	proxy, err := middleware.NewGRPCProxyMiddleware(address, descriptor, grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+
+	reg, err := register.New(&register.Config{
+		App: "test",  // 请修改对应的App缩写
+		Name: "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
+		Key: "test",  // 从服务管理中添加服务后获取
+		IsDebug: false,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	register.AddSysFunction(&service.SysService{Register: reg})
+	register.AddBeforeFilterHandler(proxy.Handler)
+
+	reg.ConnectToDev()
 ```
