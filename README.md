@@ -132,6 +132,16 @@ func main() {
 SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求，需要注意的是Console后台的服务名将为协议包根目录名称。
 
 ```golang
+package main
+
+import (
+	"github.com/xdapp/xdapp-sdk-go/pkg/middleware"
+	"github.com/xdapp/xdapp-sdk-go/register"
+	"github.com/xdapp/xdapp-sdk-go/service"
+	"google.golang.org/grpc"
+)
+
+func main() {
 	// grpc service IP地址
 	address := "localhost:8080"
 	// grpc协议描述文件，参考：https://github.com/fullstorydev/grpcurl#protoset-files
@@ -142,9 +152,9 @@ SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求，�
 	}
 
 	reg, err := register.New(&register.Config{
-		App: "test",  // 请修改对应的App缩写
-		Name: "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
-		Key: "test",  // 从服务管理中添加服务后获取
+		App:     "test", // 请修改对应的App缩写
+		Name:    "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
+		Key:     "test", // 从服务管理中添加服务后获取
 		IsDebug: false,
 	})
 
@@ -156,4 +166,5 @@ SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求，�
 	register.AddBeforeFilterHandler(proxy.Handler)
 
 	reg.ConnectToDev()
+}
 ```
