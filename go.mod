@@ -12,7 +12,4 @@ require (
 	github.com/leesper/tao v0.0.0-20180126151721-50d6193148cc
 	github.com/prometheus/common v0.2.0
 	google.golang.org/grpc v1.29.1
-	mega-ts v0.0.0-00010101000000-000000000000
 )
-
-replace mega-ts => ../../mega-ts
