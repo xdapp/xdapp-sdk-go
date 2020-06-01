@@ -129,7 +129,28 @@ func main() {
 转发GRPC协议
 ----------
 
-SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求，需要注意的是Console后台的服务名将为协议包根目录名称。
+SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求
+
+* Console后台的服务名将为协议包根目录名称
+* GRPC协议中的类型会按照谷歌定义的[JSON Mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) 做转换
+* 前端请求时注意带上完整包名请求，并且严格区分大小写
+
+前端调用例子
+```proto3
+# pb协议
+syntax = "proto3";
+
+# 服务名：test
+package test.api.v1;
+
+service TextCheck {
+    rpc HelloWorld(google.protobuf.Empty) returns(google.protobuf.Empty);
+}
+```
+```js
+// 前端全局调用
+require('app').service.test.api.v1.TextCheck.HelloWorld()
+```
 
 ```golang
 package main

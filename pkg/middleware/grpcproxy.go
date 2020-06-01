@@ -90,14 +90,17 @@ func (m *GRPCProxyMiddleware) OnReceiveHeaders(md metadata.MD) {
 }
 
 func (m *GRPCProxyMiddleware) OnReceiveResponse(message proto.Message) {
-	respStr, err := m.respFormatter.MarshalToString(message)
+	var buf bytes.Buffer
+	err := m.respFormatter.Marshal(&buf, message)
 	if err != nil {
 		m.lastResp = m.parseRespErr(err)
+		return
 	}
 
 	var response map[string]interface{}
-	if err := json.Unmarshal([]byte(respStr), &response); err != nil {
+	if err := json.Unmarshal(buf.Bytes(), &response); err != nil {
 		m.lastResp = m.parseRespErr(err)
+		return
 	}
 
 	writer := io.NewWriter(true)
