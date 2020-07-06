@@ -19,7 +19,7 @@ type IRegister interface {
 	SetRegSuccess(status bool)
 	SetServiceData(data interface{}) error
 	CloseClient()
-	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{}
+	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) (interface{}, error)
 	ILogger
 }
 

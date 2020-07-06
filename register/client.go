@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/leesper/tao"
+	"github.com/xdapp/xdapp-sdk-go/pkg/types"
 )
 
 var (
@@ -28,7 +29,7 @@ func init() {
 
 func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 	if host == "" {
-		panic("缺少tcp host")
+		Logger.Error("[tcp] 缺少host")
 	}
 
 	c := doConnect(host, port, ssl)
@@ -40,23 +41,35 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 
 	// 连接关闭 1秒后重连
 	onClose := tao.OnCloseOption(func(c tao.WriteCloser) {
-		Logger.Debug("RPC服务连接关闭，等待重新连接")
+		Logger.Debug("[tcp] RPC服务连接关闭，等待重新连接")
 		doConnect(host, port, ssl)
 	})
 
 	onMessage := tao.OnMessageOption(func(msg tao.Message, c tao.WriteCloser) {
-		ver := msg.(Request).Ver
-		flag := msg.(Request).Flag
-		body := msg.(Request).Body
-		header := msg.(Request).Header
-		context := msg.(Request).Context
+		req, ok := msg.(Request); if !ok {
+			Logger.Error("[tcp] 解析数据格式异常")
+		}
+
+		ver := req.Ver
+		flag := req.Flag
+		body := req.Body
+		header := req.Header
+		context := req.Context
 
 		// 返回数据的模式
-		if (flag & FlagResultMode) == FlagResultMode {
-			sendRpcReceive(flag, header, body)
+		if (flag & types.ProtocolFlagResultMode) == types.ProtocolFlagResultMode {
+			err := sendRpcReceive(flag, header, body)
+			if err != nil {
+				Logger.Error(err)
+			}
 			return
 		}
-		transportRpcRequest(c, flag, ver, header, context, RpcHandle(header, body))
+		go func() {
+			err := transportRpcRequest(c, flag, ver, header, context, RpcHandle(header, body))
+			if err != nil {
+				Logger.Error(err)
+			}
+		}()
 	})
 
 	requestId = tao.NewAtomicInt64(0)
@@ -76,7 +89,7 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 		options = append(options, tao.TLSCredsOption(tlsConf))
 	}
 
-	tao.Register(request.MessageNumber(), Unserialize, nil)
+	tao.Register(request.MessageNumber(), unSerialize, nil)
 
 	return tao.NewClientConn(0, c, options...)
 }
@@ -105,9 +118,9 @@ func doConnect(host string, port int, ssl bool) net.Conn {
 }
 
 // rpc 请求返回
-func sendRpcReceive(flag byte, header Header, body []byte) {
+func sendRpcReceive(flag byte, header Header, body []byte) error {
 	reqId := IntToStr(header.RequestId)
-	finish := (flag & FlagFinish) == FlagFinish
+	finish := (flag & types.ProtocolFlagFinish) == types.ProtocolFlagFinish
 
 	if finish == false {
 		receiveBuff.mu.Lock()
@@ -115,12 +128,13 @@ func sendRpcReceive(flag byte, header Header, body []byte) {
 		receiveBuff.mu.Unlock()
 
 		// 30秒后清理数据
-		Conn.RunAt(time.Now().Add(RpcClearBufTime*time.Second), func(i time.Time, closer tao.WriteCloser) {
+		d := time.Now().Add(types.RpcClearBufTime*time.Second)
+		Conn.RunAt(d, func(i time.Time, closer tao.WriteCloser) {
 			receiveBuff.mu.Lock()
 			delete(receiveBuff.bufMap, reqId)
 			receiveBuff.mu.Unlock()
 		})
-		return
+		return nil
 	} else if receiveBuff.bufMap[reqId] != nil {
 		body = BytesCombine(receiveBuff.bufMap[reqId], body)
 		receiveBuff.mu.Lock()
@@ -128,10 +142,11 @@ func sendRpcReceive(flag byte, header Header, body []byte) {
 		receiveBuff.mu.Unlock()
 	}
 
-	if resp, error := rpcDecode(body); error != "" {
-		Logger.Warn(error)
-	} else {
-		receiveChanMap[reqId] = make(chan interface{})
-		receiveChanMap[reqId] <- resp
+	resp, err := rpcDecode(body)
+	if err != nil {
+		return err
 	}
+	receiveChanMap[reqId] = make(chan interface{})
+	receiveChanMap[reqId] <- resp
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"net"
 
 	"github.com/leesper/tao"
+	"github.com/xdapp/xdapp-sdk-go/pkg/types"
 )
 
 //  标识   | 版本    | 长度    | 头信息       | 自定义内容    |  正文
@@ -57,19 +58,19 @@ func (req Request) MessageNumber() int32 {
 }
 
 func (req Request) Serialize() ([]byte, error) {
-	var writer = new(bytes.Buffer)
-	binary.Write(writer, binary.BigEndian, req.Prefix)
-	binary.Write(writer, binary.BigEndian, req.Header)
-	return BytesCombine(writer.Bytes(), req.Context, req.Body), nil
+	var w = new(bytes.Buffer)
+	binary.Write(w, binary.BigEndian, req.Prefix)
+	binary.Write(w, binary.BigEndian, req.Header)
+	return BytesCombine(w.Bytes(), req.Context, req.Body), nil
 }
 
-func Unserialize(data []byte) (tao.Message, error) {
-	if data == nil {
+func unSerialize(d []byte) (tao.Message, error) {
+	if d == nil {
 		return nil, tao.ErrNilData
 	}
 
 	req := new(Request)
-	reader := bytes.NewReader(data)
+	reader := bytes.NewReader(d)
 	binary.Read(reader, binary.BigEndian, req)
 	return req, nil
 }
@@ -79,12 +80,12 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 	errorChan := make(chan error)
 
 	go func(bc chan []byte, ec chan error) {
-		buf, err := readBytesByLength(raw, PrefixLength)
+		buf, err := readBytesByLength(raw, types.ProtocolPrefixLength)
 		if err != nil {
 			ec <- err
 			close(bc)
 			close(ec)
-			Logger.Warn("read failed")
+			Logger.Warn("数据解析失败 err: " + err.Error())
 			return
 		}
 		bc <- buf
@@ -118,7 +119,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			return nil, errors.New(err)
 		}
 
-		headBytes, err := readBytesByLength(raw, HeaderLength)
+		headBytes, err := readBytesByLength(raw, types.ProtocolHeaderLength)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +134,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			return nil, err
 		}
 
-		body, err := readBytesByLength(raw, int(prefix.Length)-HeaderLength-ctxLen)
+		body, err := readBytesByLength(raw, int(prefix.Length)-types.ProtocolHeaderLength-ctxLen)
 		if err != nil {
 			return nil, err
 		}
@@ -158,28 +159,47 @@ func (req Request) Encode(msg tao.Message) ([]byte, error) {
 }
 
 // 转发消息到其它服务
-func transportRpcRequest(c tao.WriteCloser, flag byte, ver byte, header Header, context []byte, body []byte) {
+func transportRpcRequest(c tao.WriteCloser, flag byte, ver byte, header Header, context []byte, body []byte) error {
+	bodyLen := len(body)
+	flag = flag | types.ProtocolFlagResultMode
 
-	totalLen := len(body)
-	flag = flag | FlagResultMode
+	if bodyLen < types.ProtocolSendChunkLength {
+		prefix := Prefix{uint8(flag | types.ProtocolFlagFinish), ver, uint32(types.ProtocolHeaderLength + len(context) + len(body))}
+		r := Request{
+			Prefix:  prefix,
+			Header:  header,
+			Context: context,
+			Body:    body,
+		}
 
-	if totalLen < SendChunkLength {
-		prefix := Prefix{uint8(flag | FlagFinish), ver, uint32(HeaderLength + len(context) + len(body))}
-		sendRequest(c, Request{prefix, header, context, body})
-		return
+		err := c.Write(r)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 大于 拆包分段发送
-	for i := 0; i < totalLen; i += SendChunkLength {
-		sendLen := Min(SendChunkLength, totalLen-i)
-		if totalLen-i == sendLen {
-			flag |= FlagFinish
+	for i := 0; i < bodyLen; i += types.ProtocolSendChunkLength {
+		sendLen := Min(types.ProtocolSendChunkLength, bodyLen-i)
+		if bodyLen-i == sendLen {
+			flag |= types.ProtocolFlagFinish
 		}
 
 		chunk := body[i:sendLen]
-		prefix := Prefix{uint8(flag), ver, uint32(HeaderLength + len(context) + len(chunk))}
-		sendRequest(c, Request{prefix, header, context, chunk})
+		prefix := Prefix{uint8(flag), ver, uint32(types.ProtocolHeaderLength + len(context) + len(chunk))}
+
+		r := Request{
+			Prefix:  prefix,
+			Header:  header,
+			Context: context,
+			Body:    chunk,
+		}
+		err := c.Write(r)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func sendRequest(c tao.WriteCloser, request Request) {

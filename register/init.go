@@ -11,6 +11,7 @@ import (
 	"github.com/alecthomas/log4go"
 	"github.com/hprose/hprose-golang/rpc"
 	"github.com/leesper/tao"
+	"github.com/xdapp/xdapp-sdk-go/pkg/types"
 )
 
 type Config struct {
@@ -23,8 +24,6 @@ type Config struct {
 	PackageMaxLength int    // tcp最大长度
 }
 
-type TcpConfig struct{}
-
 type register struct {
 	cfg         *Config
 	Conn        *tao.ClientConn             // tcp客户端连接
@@ -33,59 +32,30 @@ type register struct {
 	ServiceData map[interface{}]interface{} // console 注册成功返回的页面服务器信息
 }
 
-const (
-	DefaultVer              = 1
-	DefaultApp              = "test"
-	DefaultName             = "console"
-	DefaultKey              = ""
-	DefaultLogName          = "test.log"
-	DefaultPackageMaxLength = 0x21000 // 最大的长度
-
-	FlagSysMsg     = 1 // 来自系统调用的消息请求
-	FlagResultMode = 2 // 请求返回模式，表明这是一个RPC结果返回
-	FlagFinish     = 4 // 是否消息完成，用在消息返回模式里，表明RPC返回内容结束
-	FlagTransport  = 8 // 转发浏览器RPC请求，表明这是一个来自浏览器的请求
-
-	PrefixLength    = 6                           // Flag 1字节、 Ver 1字节、 Length 4字节
-	HeaderLength    = 17                          // 默认消息头长度, 不包括 PrefixLength
-	ContextOffset   = PrefixLength + HeaderLength // 自定义上下文内容所在位置，   23
-	SendChunkLength = 0x200000                    // 单次发送的包大小
-)
-
 var (
 	config *Config
 	Conn   *tao.ClientConn // tcp客户端连接
 	Logger *log4go.Logger  // log 日志
-
-	ProductionServer = map[string]interface{}{
-		"host": "service-prod.xdapp.com", "port": 8900, "ssl": true}
-
-	DevServer = map[string]interface{}{
-		"host": "dev.xdapp.com", "port": 8100, "ssl": true}
-
-	GlobalServer = map[string]interface{}{
-		"host": "service-gcp.xdapp.com", "port": 8900, "ssl": true}
 )
 
 func New(cfg *Config) (*register, error) {
-
 	config = cfg
 
 	if cfg.App == "" {
-		cfg.App = DefaultApp
+		return nil, types.ErrRequireApp
 	}
 	if cfg.Name == "" {
-		cfg.Name = DefaultName
+		return nil, types.ErrRequireServiceName
 	}
 	if cfg.Key == "" {
-
-		cfg.Key = DefaultKey
+		return nil, types.ErrRequireServiceKey
 	}
+
 	if cfg.Version == 0 {
-		cfg.Version = DefaultVer
+		cfg.Version = types.RPCVersion
 	}
 	if cfg.PackageMaxLength == 0 {
-		cfg.PackageMaxLength = DefaultPackageMaxLength
+		cfg.PackageMaxLength = types.PackageMaxLength
 	}
 	Logger = NewLog4go(cfg.IsDebug, cfg.LogName)
 
@@ -98,24 +68,18 @@ func New(cfg *Config) (*register, error) {
 }
 
 func (reg *register) ConnectToProduce() {
-	host := ProductionServer["host"].(string)
-	port := ProductionServer["port"].(int)
-	ssl := ProductionServer["ssl"].(bool)
-	reg.ConnectTo(host, port, ssl)
+	s := types.ProductionServer
+	reg.ConnectTo(s.Host, s.Port, s.Ssl)
 }
 
 func (reg *register) ConnectToGlobal() {
-	host := GlobalServer["host"].(string)
-	port := GlobalServer["port"].(int)
-	ssl := GlobalServer["ssl"].(bool)
-	reg.ConnectTo(host, port, ssl)
+	s := types.GlobalServer
+	reg.ConnectTo(s.Host, s.Port, s.Ssl)
 }
 
 func (reg *register) ConnectToDev() {
-	host := DevServer["host"].(string)
-	port := DevServer["port"].(int)
-	ssl := DevServer["ssl"].(bool)
-	reg.ConnectTo(host, port, ssl)
+	s := types.DevServer
+	reg.ConnectTo(s.Host, s.Port, s.Ssl)
 }
 
 func (reg *register) ConnectTo(host string, port int, ssl bool) {
@@ -197,7 +161,7 @@ func (reg *register) Error(arg0 interface{}, args ...interface{}) {
 }
 
 // 调取rpc服务
-func (reg *register) RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{} {
+func (reg *register) RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) (interface{}, error) {
 	var serviceId uint32
 	if _, ok := cfg["serviceId"]; ok {
 		serviceId = cfg["serviceId"]
@@ -213,7 +177,7 @@ func (reg *register) RpcCall(name string, args []reflect.Value, namespace string
 
 func NewLog4go(isDebug bool, logName string) *log4go.Logger {
 	if logName == "" {
-		logName = DefaultLogName
+		logName = types.LogFileName
 	}
 
 	log4 := make(log4go.Logger)

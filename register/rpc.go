@@ -1,10 +1,12 @@
 package register
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
+
 	"github.com/hprose/hprose-golang/io"
 	"github.com/hprose/hprose-golang/rpc"
-	"reflect"
 )
 
 var (
@@ -92,27 +94,27 @@ func AddBeforeFilterHandler(handle ...rpc.FilterHandler) {
 }
 
 func rpcEncode(name string, args []reflect.Value) []byte {
-	writer := io.NewWriter(false)
-	writer.WriteByte(io.TagCall)
-	writer.WriteString(name)
-	writer.Reset()
-	writer.WriteSlice(args)
-	writer.WriteByte(io.TagEnd)
-	return writer.Bytes()
+	w := io.NewWriter(false)
+	w.WriteByte(io.TagCall)
+	w.WriteString(name)
+	w.Reset()
+	w.WriteSlice(args)
+	w.WriteByte(io.TagEnd)
+	return w.Bytes()
 }
 
-func rpcDecode(data []byte) (interface{}, string) {
-	reader := io.AcquireReader(data, false)
-	defer io.ReleaseReader(reader)
-	tag, _ := reader.ReadByte()
+func rpcDecode(data []byte) (interface{}, error) {
+	r := io.AcquireReader(data, false)
+	defer io.ReleaseReader(r)
+	tag, _ := r.ReadByte()
 	switch tag {
 	case io.TagResult:
 		var e interface{}
-		reader.Unserialize(&e)
-		return e, ""
+		r.Unserialize(&e)
+		return e, nil
 	case io.TagError:
-		return nil, "RPC 系统调用 Agent 返回错误信息: " + reader.ReadString()
+		return nil, errors.New("RPC 系统调用 Agent 返回错误信息: " + r.ReadString())
 	default:
-		return nil, "RPC 系统调用收到一个未定义的方法返回: " + string(tag) + reader.ReadString()
+		return nil, errors.New("RPC 系统调用收到一个未定义的方法返回: " + string(tag) + r.ReadString())
 	}
 }
