@@ -73,16 +73,25 @@ func (c *rpcClient) Call(name string, args []reflect.Value) (interface{}, error)
 	var rpcContext = make([]byte, 2)
 	binary.BigEndian.PutUint16(rpcContext, uint16(types.RpcCallWorkId))
 
-	prefix := Prefix{0, 1, uint32(types.ProtocolHeaderLength + len(rpcContext) + len(body))}
-	header := Header{0, c.ServiceId, requestId, c.AdminId, uint8(len(rpcContext))}
+	prefix := Prefix{
+		Flag:   0,
+		Ver:    1,
+		Length: uint32(types.ProtocolHeaderLength + len(rpcContext) + len(body)),
+	}
+	header := Header{
+		AppId:         0,
+		ServiceId:     c.ServiceId,
+		RequestId:     requestId,
+		AdminId:       c.AdminId,
+		ContextLength: uint8(len(rpcContext)),
+	}
 
-	r := Request{
+	err := c.Conn.Write(Request{
 		Prefix:  prefix,
 		Header:  header,
 		Context: rpcContext,
 		Body:    body,
-	}
-	err := c.Conn.Write(r)
+	})
 	if err != nil {
 		return nil, err
 	}

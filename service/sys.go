@@ -87,7 +87,7 @@ func (service *SysService) RegOk(data interface{}, time int, rand string, hash s
 	if err != nil {
 		service.Register.Warn(err.Error())
 	} else {
-		service.Register.Debug("RPC服务注册成功，服务名:" + app + "-> " + name)
+		service.Register.Debug("RPC服务注册成功，服务名:" + app + "->" + name)
 	}
 }
 

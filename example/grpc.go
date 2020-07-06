@@ -21,7 +21,7 @@ func main() {
 		App:     "test", // 请修改对应的App缩写
 		Name:    "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
 		Key:     "test", // 从服务管理中添加服务后获取
-		IsDebug: false,
+		Debug: false,
 	})
 
 	if err != nil {

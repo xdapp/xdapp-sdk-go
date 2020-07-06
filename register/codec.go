@@ -48,10 +48,6 @@ type Header struct {
 	ContextLength byte
 }
 
-var (
-	ErrReadByteEmpty = errors.New("读取数据为空")
-)
-
 // MessageNumber returns the message number.
 func (req Request) MessageNumber() int32 {
 	return int32(config.Version)
@@ -92,14 +88,13 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 	}(byteChan, errorChan)
 
 	var readBytes []byte
-
 	select {
 	case err := <-errorChan:
 		return nil, err
 
 	case readBytes = <-byteChan:
 		if readBytes == nil {
-			return nil, ErrReadByteEmpty
+			return nil, types.ErrReadByteEmpty
 		}
 
 		var header Header
@@ -164,15 +159,18 @@ func transportRpcRequest(c tao.WriteCloser, flag byte, ver byte, header Header, 
 	flag = flag | types.ProtocolFlagResultMode
 
 	if bodyLen < types.ProtocolSendChunkLength {
-		prefix := Prefix{uint8(flag | types.ProtocolFlagFinish), ver, uint32(types.ProtocolHeaderLength + len(context) + len(body))}
-		r := Request{
+		prefix := Prefix{
+			Flag:   uint8(flag | types.ProtocolFlagFinish),
+			Ver:    ver,
+			Length: uint32(types.ProtocolHeaderLength + len(context) + len(body)),
+		}
+
+		err := c.Write(Request{
 			Prefix:  prefix,
 			Header:  header,
 			Context: context,
 			Body:    body,
-		}
-
-		err := c.Write(r)
+		})
 		if err != nil {
 			return err
 		}
@@ -181,29 +179,25 @@ func transportRpcRequest(c tao.WriteCloser, flag byte, ver byte, header Header, 
 	// 大于 拆包分段发送
 	for i := 0; i < bodyLen; i += types.ProtocolSendChunkLength {
 		sendLen := Min(types.ProtocolSendChunkLength, bodyLen-i)
-		if bodyLen-i == sendLen {
+		if bodyLen - i == sendLen {
 			flag |= types.ProtocolFlagFinish
 		}
 
 		chunk := body[i:sendLen]
-		prefix := Prefix{uint8(flag), ver, uint32(types.ProtocolHeaderLength + len(context) + len(chunk))}
-
-		r := Request{
+		prefix := Prefix{
+			Flag:   uint8(flag),
+			Ver:    ver,
+			Length: uint32(types.ProtocolHeaderLength + len(context) + len(chunk)),
+		}
+		err := c.Write(Request{
 			Prefix:  prefix,
 			Header:  header,
 			Context: context,
 			Body:    chunk,
-		}
-		err := c.Write(r)
+		})
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func sendRequest(c tao.WriteCloser, request Request) {
-	if err := c.Write(request); err != nil {
-		Logger.Error("error", err)
-	}
 }

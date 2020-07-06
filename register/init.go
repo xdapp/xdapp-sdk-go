@@ -19,7 +19,7 @@ type Config struct {
 	Name             string // 游戏名字
 	Key              string // 服务器秘钥
 	Version          int    // 服务器版本
-	IsDebug          bool   // 是否debug模式
+	Debug            bool   // debug模式
 	LogName          string // log文件名
 	PackageMaxLength int    // tcp最大长度
 }
@@ -57,7 +57,7 @@ func New(cfg *Config) (*register, error) {
 	if cfg.PackageMaxLength == 0 {
 		cfg.PackageMaxLength = types.PackageMaxLength
 	}
-	Logger = NewLog4go(cfg.IsDebug, cfg.LogName)
+	Logger = NewLog4go(cfg.Debug, cfg.LogName)
 
 	return &register{
 		cfg:         cfg,
@@ -175,7 +175,7 @@ func (reg *register) RpcCall(name string, args []reflect.Value, namespace string
 	return rpc.Call(name, args)
 }
 
-func NewLog4go(isDebug bool, logName string) *log4go.Logger {
+func NewLog4go(debug bool, logName string) *log4go.Logger {
 	if logName == "" {
 		logName = types.LogFileName
 	}
@@ -184,7 +184,7 @@ func NewLog4go(isDebug bool, logName string) *log4go.Logger {
 	cw := log4go.NewConsoleLogWriter()
 
 	// 非debug模式
-	if isDebug == false {
+	if debug == false {
 		cw.SetFormat("[%T %D] [%L] %M")
 	}
 	log4.AddFilter("stdout", log4go.DEBUG, cw)

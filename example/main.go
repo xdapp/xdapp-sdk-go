@@ -11,7 +11,7 @@ func main() {
 		App: "ro",
 		Name: "gm",
 		Key: "123456",
-		IsDebug: false,
+		Debug: false,
 	})
 	if err != nil {
 		panic(err)

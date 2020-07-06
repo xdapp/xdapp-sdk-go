@@ -22,10 +22,11 @@ type safeReceiveBuff struct {
 	bufMap map[string][]byte
 	mu     sync.Mutex
 }
-
-func init() {
-	receiveBuff = &safeReceiveBuff{}
-}
+var (
+	tlsConf = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+)
 
 func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 	if host == "" {
@@ -83,9 +84,6 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 	}
 
 	if ssl {
-		tlsConf := &tls.Config{
-			InsecureSkipVerify: true,
-		}
 		options = append(options, tao.TLSCredsOption(tlsConf))
 	}
 
@@ -97,9 +95,7 @@ func NewClient(host string, port int, ssl bool) *tao.ClientConn {
 func doConnect(host string, port int, ssl bool) net.Conn {
 	address := fmt.Sprintf("%s:%s", host, IntToStr(port))
 	if ssl {
-		c, err := tls.Dial("tcp", address, &tls.Config{
-			InsecureSkipVerify: true,
-		})
+		c, err := tls.Dial("tcp", address, tlsConf)
 		if err != nil {
 			Logger.Warn("RPC服务连接错误，等待重新连接" + err.Error())
 			time.Sleep(2 * time.Second)
