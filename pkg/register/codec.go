@@ -3,7 +3,6 @@ package register
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -57,7 +56,9 @@ func (req Request) Serialize() ([]byte, error) {
 	var w = new(bytes.Buffer)
 	binary.Write(w, binary.BigEndian, req.Prefix)
 	binary.Write(w, binary.BigEndian, req.Header)
-	return BytesCombine(w.Bytes(), req.Context, req.Body), nil
+	w.Write(req.Context)
+	w.Write(req.Body)
+	return w.Bytes(), nil
 }
 
 func unSerialize(d []byte) (tao.Message, error) {
@@ -81,7 +82,7 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 			ec <- err
 			close(bc)
 			close(ec)
-			Logger.Warn("数据解析失败 err: " + err.Error())
+			lg.Error("[tcp数据解析] 获取头信息失败 err: " + err.Error())
 			return
 		}
 		bc <- buf
@@ -90,11 +91,15 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 	var readBytes []byte
 	select {
 	case err := <-errorChan:
+		err = fmt.Errorf("[tcp数据解析] 失败 error: %w", err)
+		lg.Error(err.Error())
 		return nil, err
 
 	case readBytes = <-byteChan:
 		if readBytes == nil {
-			return nil, types.ErrReadByteEmpty
+			err := types.ErrReadByteEmpty
+			lg.Error(err.Error())
+			return nil, err
 		}
 
 		var header Header
@@ -102,39 +107,62 @@ func (req Request) Decode(raw net.Conn) (tao.Message, error) {
 
 		err := binary.Read(bytes.NewReader(readBytes), binary.BigEndian, &prefix)
 		if err != nil {
+			err = fmt.Errorf("[tcp数据解析] 解析prefix信息失败 error: %w", err)
+			lg.Error(err.Error())
 			return nil, err
 		}
+
 		if prefix.Ver != byte(config.Version) {
-			return nil, errors.New("消息版本错误" + string(prefix.Ver))
+			err := types.ErrVersionIllegal
+			err = fmt.Errorf("%w 当前版本: %s", err, string(prefix.Ver))
+			lg.Error(err.Error())
+			return nil, err
 		}
 
-		if prefix.Length > uint32(config.PackageMaxLength) {
-			err := fmt.Sprintf("数据长度为%d, 大于最大值%d", prefix.Length, config.PackageMaxLength)
-			Logger.Error(err)
-			return nil, errors.New(err)
+		prefixLen := prefix.Length
+		pkgLen := config.PackageMaxLength
+
+		if prefixLen > uint32(pkgLen) {
+			err := types.ErrDataRuleIllegal
+			err = fmt.Errorf("%w 数据长度为%d, 大于最大值%d", err, prefixLen, pkgLen)
+			lg.Error(err.Error())
+			return nil, err
 		}
 
 		headBytes, err := readBytesByLength(raw, types.ProtocolHeaderLength)
 		if err != nil {
+			err = fmt.Errorf("[tcp数据解析] 读取header内容失败 error: %w", err)
+			lg.Error(err.Error())
 			return nil, err
 		}
 		headBuf := bytes.NewReader(headBytes)
 		if err = binary.Read(headBuf, binary.BigEndian, &header); err != nil {
+			err = fmt.Errorf("[tcp数据解析] 解析header信息失败 error: %w", err)
+			lg.Error(err.Error())
 			return nil, err
 		}
 
 		ctxLen := int(header.ContextLength)
 		context, err := readBytesByLength(raw, ctxLen)
 		if err != nil {
+			err = fmt.Errorf("[tcp数据解析] 读取content内容失败 error: %w", err)
+			lg.Error(err.Error())
 			return nil, err
 		}
 
-		body, err := readBytesByLength(raw, int(prefix.Length)-types.ProtocolHeaderLength-ctxLen)
+		body, err := readBytesByLength(raw, int(prefixLen)-types.ProtocolHeaderLength-ctxLen)
 		if err != nil {
+			err = fmt.Errorf("[tcp数据解析] 解析body信息失败 error: %w", err)
+			lg.Error(err.Error())
 			return nil, err
 		}
 
-		return Request{prefix, header, context, body}, nil
+		return Request{
+			Prefix:  prefix,
+			Header:  header,
+			Context: context,
+			Body:    body,
+		}, nil
 	}
 }
 
@@ -165,20 +193,22 @@ func transportRpcRequest(c tao.WriteCloser, flag byte, ver byte, header Header, 
 			Length: uint32(types.ProtocolHeaderLength + len(context) + len(body)),
 		}
 
-		err := c.Write(Request{
+		return c.Write(Request{
 			Prefix:  prefix,
 			Header:  header,
 			Context: context,
 			Body:    body,
 		})
-		if err != nil {
-			return err
-		}
 	}
 
 	// 大于 拆包分段发送
 	for i := 0; i < bodyLen; i += types.ProtocolSendChunkLength {
-		sendLen := Min(types.ProtocolSendChunkLength, bodyLen-i)
+		// get smaller
+		sendLen := types.ProtocolSendChunkLength
+		if sendLen > bodyLen-i {
+			sendLen = bodyLen-i
+		}
+
 		if bodyLen - i == sendLen {
 			flag |= types.ProtocolFlagFinish
 		}

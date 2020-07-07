@@ -12,14 +12,38 @@ rpc服务
 
 包管理
 ----------
-    安装： brew install dep
-    初始化： dep init
+    初始化： go mod tidy
 
 功能
 ----------
 - 接入后台console服务器
-- rpc注册service文件夹中服务 （区分sys系统服务 + 普通服务）
+- rpc注册service服务 （区分sys系统服务 + 普通服务, v2.0.0系统服务已内部处理）
+- 支持logger自定义 默认使用zap
 - 支持转发GRPC协议
+
+日志库
+----------
+日志库默认使用zap (v2.0.0开始)，或者也可以使用自定义 Logger
+
+参考默认logger如何自定义它 https://github.com/xdapp/xdapp-sdk-go/pkg/register/logger.go
+
+例如，使用Revel的Logger作为GORM的输出
+
+reg.SetLogger()
+使用 os.Stdout 作为输出
+
+reg.SetLogger(log.New(os.Stdout, "\r\n", 0))
+
+自定义logger, 只要实现以下 interface就可以替换默认日志
+
+```golang
+type logger interface {
+    Debug(msg string)
+    Info(msg string)
+    Warn(msg string)
+    Error(msg string)
+}
+```
 
 服务器列表
 ----------
@@ -38,36 +62,7 @@ rpc服务
 - tcp连接到console服务 
 - 执行reg检验参数
 - 成注册登记 回调reg_ok
-- 调取rpc服务 rpc.Call xxx
-
-> 如请求console test_ping(time)方法
-
-```go
-go func() {
-    args := []reflect.Value {reflect.ValueOf(time.Now().Unix())}
-    rpcClient := register.NewRpcClient(register.RpcClient{NameSpace: "test"})
-    result := rpcClient.Call("ping", args)
-    
-    //返回 [pong, xxx] 
-    fmt.Println("rpc返回", result)
-}()
-
-```
-
-
-关于 `context` 上下文对象
-----------
-
-在RPC请求时，如果需要获取到请求时的管理员ID等等参数，可以用此获取，如上面 `hello` 的例子，通过 `context := register.getCurrentContext()` 可获取到 `context`，包括：
-
-参数         |   说明               | 获取
-------------|---------------------|---------------------
-requestId   | 请求的ID             | context.GetInterface('requestId')
-appId       | 请求的应用ID           | context.GetInterface('appId')
-serviceId   | 请求发起的服务ID，0表示XDApp系统请求，1表示来自浏览器的请求    | context.GetInterface('serviceId')
-adminId     | 请求的管理员ID，0表示系统请求 context.GetInterface('adminId')  |  context.GetInterface('adminId')
-userdata    | 默认 stdClass 对象，可以自行设置参数   | context.UserData()
-
+- 完成校验，sdk可接受来自console server的请求
 
 Example
 ----------
@@ -75,7 +70,7 @@ Example
 package main
 
 import (
-    "github.com/xdapp/xdapp-sdk-go/register"
+    "github.com/xdapp/xdapp-sdk-go/pkg/register"
     "github.com/xdapp/xdapp-sdk-go/service"
 )
 
@@ -92,10 +87,6 @@ func main() {
         panic(err)
     }
 
-    // 注册系统rpc方法 （必加 用于sdk与xdapp服务注册）
-    register.AddSysFunction(
-        &service.SysService{Register: reg})
-
     /**
      * 注册单个前端页面可访问的rpc方法 （内部会加上服务名gm作前缀）
      * (!!! 请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
@@ -103,14 +94,16 @@ func main() {
      * register.AddFunction("gm_hello", func() string {return "hello world"})
      * 页面请求方法 hello
      */
-    register.AddWebFunction("hello", func() string {return "hello world"})
+    reg.AddWebFunction("hello", func() string {
+        return "hello world"
+    })
 
     /**
      * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
      * namespace: test, 页面请求方法 test_xxx
      * namespace可传空,  页面请求方法 xxx
      */
-    register.AddWebInstanceMethods(
+    reg.AddWebInstanceMethods(
         &service.TestService{Name: "test"}, "test")
 
     reg.ConnectTo("127.0.0.1", 8900, false)
@@ -124,6 +117,11 @@ func main() {
     // 连接到生产环境(海外项目)
     // reg.ConnectToGlobal()
 }
+```
+
+```js
+// 前端全局调用
+require('app').service.hello()
 ```
 
 转发GRPC协议
@@ -157,8 +155,7 @@ package main
 
 import (
 	"github.com/xdapp/xdapp-sdk-go/pkg/middleware"
-	"github.com/xdapp/xdapp-sdk-go/register"
-	"github.com/xdapp/xdapp-sdk-go/service"
+	"github.com/xdapp/xdapp-sdk-go/pkg/register"
 	"google.golang.org/grpc"
 )
 
@@ -183,9 +180,27 @@ func main() {
 		panic(err)
 	}
 
-	register.AddSysFunction(&service.SysService{Register: reg})
 	register.AddBeforeFilterHandler(proxy.Handler)
 
 	reg.ConnectToDev()
 }
 ```
+
+Changelog
+----------
+
+### v2.0.0
+1. change register path;<br/>
+调整register目录结构, 精简优化代码
+2. change constant error;<br/>
+调整 constant常量、error
+3. feature default logger use zap;<br/>
+默认日志库使用zap, 增加log
+4. feature simplify AddSysFunction;<br/>
+简化注册流程 系统方法 AddSysFunction 内部处理
+5. feature coroutine handle rpc request;<br/>
+RPC请求非阻塞 协程处理
+
+### v1.0.5
+1. feature add GRPC proxy;<br/>
+转发GRPC协议

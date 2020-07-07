@@ -3,6 +3,7 @@ package register
 import (
 	"encoding/binary"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -98,11 +99,11 @@ func (c *rpcClient) Call(name string, args []reflect.Value) (interface{}, error)
 
 	time.Sleep(10 * time.Millisecond)
 	timeId := c.Conn.RunAfter(time.Duration(c.TimeOut)*time.Second, func(i time.Time, closer tao.WriteCloser) {
-		Logger.Info("Cancel the context")
+		lg.Info("Cancel the context")
 	})
 	defer c.Conn.CancelTimer(timeId)
 
-	reqId := IntToStr(requestId)
+	reqId := strconv.FormatUint(uint64(requestId), 10)
 	select {
 	case result := <-receiveChanMap[reqId]:
 		delete(receiveChanMap, reqId)

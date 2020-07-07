@@ -1,8 +1,8 @@
 package types
 
 const (
-	RPCVersion       = 1       // 默认RPC版本
-	PackageMaxLength = 0x21000 // 最大包长度
+	RPCVersion       = 1       	// 默认RPC版本
+	PackageMaxLength = 0x200000 // 最大包长度 默认2m
 	LogFileName   = "test.log"  // log文件名
 
 	RpcCallWorkId   = 0  // rpc workId (PHP版本对应进程id)
