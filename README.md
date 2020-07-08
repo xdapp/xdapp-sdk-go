@@ -65,7 +65,6 @@ Example
 简化server连接版
 ```golang
 package main
-package main
 
 import (
   "github.com/xdapp/xdapp-sdk-go/pkg/register"
