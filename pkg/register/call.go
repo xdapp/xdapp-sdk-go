@@ -3,16 +3,12 @@ package register
 import (
 	"encoding/binary"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/leesper/tao"
-)
-
-const (
-	RpcCallWorkId   = 0  // rpc workId (PHP版本对应进程id)
-	RpcCallTimeout  = 10 // rpc 请求超时时间
-	RpcClearBufTime = 30 // rpc 清理数据时间
+	"github.com/xdapp/xdapp-sdk-go/pkg/types"
 )
 
 type rpcClient struct {
@@ -25,7 +21,7 @@ type rpcClient struct {
 
 func NewRpcClient(conn *tao.ClientConn, serviceId uint32, adminId uint32, timeOut uint32, nameSpace string) *rpcClient {
 	if timeOut == 0 {
-		timeOut = RpcCallTimeout
+		timeOut = types.RpcCallTimeout
 	}
 	return &rpcClient{
 		Conn:      conn,
@@ -66,7 +62,7 @@ func (c *rpcClient) SetNameSpace(NameSpace string) {
 # 4         | 4          | 4          | 4           | 1
 # N         | N          | N          | N           | C
 */
-func (c *rpcClient) Call(name string, args []reflect.Value) interface{} {
+func (c *rpcClient) Call(name string, args []reflect.Value) (interface{}, error) {
 	if c.NameSpace != "" {
 		c.NameSpace = strings.TrimSuffix(c.NameSpace, "_") + "_"
 		name = c.NameSpace + name
@@ -76,21 +72,41 @@ func (c *rpcClient) Call(name string, args []reflect.Value) interface{} {
 	requestId := uint32(requestId.GetAndIncrement())
 
 	var rpcContext = make([]byte, 2)
-	binary.BigEndian.PutUint16(rpcContext, uint16(RpcCallWorkId))
-	prefix := Prefix{0, 1, uint32(HeaderLength + len(rpcContext) + len(body))}
-	header := Header{0, c.ServiceId, requestId, c.AdminId, uint8(len(rpcContext))}
-	sendRequest(c.Conn, Request{prefix, header, rpcContext, body})
+	binary.BigEndian.PutUint16(rpcContext, uint16(types.RpcCallWorkId))
+
+	prefix := Prefix{
+		Flag:   0,
+		Ver:    1,
+		Length: uint32(types.ProtocolHeaderLength + len(rpcContext) + len(body)),
+	}
+	header := Header{
+		AppId:         0,
+		ServiceId:     c.ServiceId,
+		RequestId:     requestId,
+		AdminId:       c.AdminId,
+		ContextLength: uint8(len(rpcContext)),
+	}
+
+	err := c.Conn.Write(Request{
+		Prefix:  prefix,
+		Header:  header,
+		Context: rpcContext,
+		Body:    body,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	time.Sleep(10 * time.Millisecond)
 	timeId := c.Conn.RunAfter(time.Duration(c.TimeOut)*time.Second, func(i time.Time, closer tao.WriteCloser) {
-		Logger.Info("Cancel the context")
+		lg.Info("Cancel the context")
 	})
 	defer c.Conn.CancelTimer(timeId)
 
-	reqId := IntToStr(requestId)
+	reqId := strconv.FormatUint(uint64(requestId), 10)
 	select {
 	case result := <-receiveChanMap[reqId]:
 		delete(receiveChanMap, reqId)
-		return result
+		return result, nil
 	}
 }

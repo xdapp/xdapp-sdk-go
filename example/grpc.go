@@ -2,8 +2,7 @@ package main
 
 import (
 	"github.com/xdapp/xdapp-sdk-go/pkg/middleware"
-	"github.com/xdapp/xdapp-sdk-go/register"
-	"github.com/xdapp/xdapp-sdk-go/service"
+	"github.com/xdapp/xdapp-sdk-go/pkg/register"
 	"google.golang.org/grpc"
 )
 
@@ -21,15 +20,14 @@ func main() {
 		App:     "test", // 请修改对应的App缩写
 		Name:    "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
 		Key:     "test", // 从服务管理中添加服务后获取
-		IsDebug: false,
+		Debug: false,
 	})
 
 	if err != nil {
 		panic(err)
 	}
 
-	register.AddSysFunction(&service.SysService{Register: reg})
-	register.AddBeforeFilterHandler(proxy.Handler)
+	reg.AddBeforeFilterHandler(proxy.Handler)
 
 	reg.ConnectToDev()
 }

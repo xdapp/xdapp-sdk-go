@@ -2,12 +2,18 @@ package main
 
 import (
 	"github.com/xdapp/xdapp-sdk-go/pkg/register"
+	"github.com/xdapp/xdapp-sdk-go/pkg/types"
 	"github.com/xdapp/xdapp-sdk-go/service"
 )
 
 // 测试注册服务
 func main() {
 	reg, err := register.New(&register.Config{
+		Server: &types.Server{
+			Host: "127.0.0.1",
+			Port: 8900,
+			Ssl: false,
+		},
 		App: "demo",
 		Name: "gm",
 		Key: "123456",
@@ -31,14 +37,5 @@ func main() {
 	reg.AddWebInstanceMethods(
 		&service.TestService{Name: "test"}, "test")
 
-	reg.ConnectTo("127.0.0.1", 8900, false)
-
-	// 连接到外网测试服务器
-	//reg.ConnectToProduce()
-
-	// 连接到生产环境(国内项目)
-	//reg.ConnectToProduce()
-
-	// 连接到生产环境(海外项目)
-	// reg.ConnectToGlobal()
+	reg.Connect()
 }

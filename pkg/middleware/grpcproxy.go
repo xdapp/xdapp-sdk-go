@@ -13,7 +13,7 @@ import (
 	"github.com/hprose/hprose-golang/io"
 	"github.com/hprose/hprose-golang/rpc"
 	"github.com/jhump/protoreflect/desc"
-	"github.com/xdapp/xdapp-sdk-go/register"
+	"github.com/xdapp/xdapp-sdk-go/pkg/register"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

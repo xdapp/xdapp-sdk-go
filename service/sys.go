@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
 	. "time"
 )
 
@@ -19,15 +18,15 @@ type IRegister interface {
 	SetRegSuccess(status bool)
 	SetServiceData(data interface{}) error
 	CloseClient()
-	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) interface{}
+	RpcCall(name string, args []reflect.Value, namespace string, cfg map[string]uint32) (interface{}, error)
 	ILogger
 }
 
 type ILogger interface {
-	Info(arg0 interface{}, args ...interface{})
-	Debug(arg0 interface{}, args ...interface{})
-	Warn(arg0 interface{}, args ...interface{})
-	Error(arg0 interface{}, args ...interface{})
+	Info(msg string)
+	Debug(msg string)
+	Warn(msg string)
+	Error(msg string)
 }
 
 type SysService struct {
@@ -36,8 +35,7 @@ type SysService struct {
 
 // 注册服务，在连接到 console 微服务系统后，会收到一个 sys_reg() 的rpc回调
 func (service *SysService) Reg(time int64, rand string, hash string) map[string]interface{} {
-
-	curHash := Sha1(fmt.Sprintf("%s.%s.%s", IntToStr(time), rand, "xdapp.com"))
+	curHash := Sha1(fmt.Sprintf("%d.%s.%s", time, rand, "xdapp.com"))
 	if curHash != hash {
 		return map[string]interface{}{"status": false}
 	}
@@ -51,7 +49,7 @@ func (service *SysService) Reg(time int64, rand string, hash string) map[string]
 	version := service.Register.GetVersion()
 
 	time = Now().Unix()
-	hash = getHash(app, name, IntToStr(time), rand, key)
+	hash = getHash(app, name, time, rand, key)
 	return map[string]interface{}{"status": true, "app": app, "name": name, "time": time, "rand": rand, "version": version, "hash": hash}
 }
 
@@ -74,7 +72,7 @@ func (service *SysService) RegOk(data interface{}, time int, rand string, hash s
 	key := service.Register.GetKey()
 	name := service.Register.GetName()
 
-	if getHash(app, name, IntToStr(time), rand, key) != hash {
+	if getHash(app, name, int64(time), rand, key) != hash {
 		service.Register.SetRegSuccess(false)
 		service.Register.CloseClient()
 		return
@@ -87,7 +85,7 @@ func (service *SysService) RegOk(data interface{}, time int, rand string, hash s
 	if err != nil {
 		service.Register.Warn(err.Error())
 	} else {
-		service.Register.Debug("RPC服务注册成功，服务名:" + app + "-> " + name)
+		service.Register.Info("RPC服务注册成功，服务名:" + app + "->" + name)
 	}
 }
 
@@ -106,8 +104,8 @@ func (service *SysService) GetFunctions() []string {
 }
 
 // hash 值
-func getHash(app string, name string, time string, rand string, key string) string {
-	return Sha1(fmt.Sprintf("%s.%s.%s.%s.%s.xdapp.com", app, name, time, rand, key))
+func getHash(app string, name string, time int64, rand string, key string) string {
+	return Sha1(fmt.Sprintf("%s.%s.%d.%s.%s.xdapp.com", app, name, time, rand, key))
 }
 
 // 获取sha1加密
@@ -116,15 +114,4 @@ func Sha1(str string) string {
 	h.Write([]byte(str))
 	r := h.Sum(nil)
 	return hex.EncodeToString(r[:])
-}
-
-func IntToStr(data interface{}) string {
-	switch value := data.(type) {
-	case int:
-		return strconv.Itoa(value) // int to str
-	case int64:
-		return strconv.FormatInt(value, 10) // int64 转str
-	default:
-		return ""
-	}
 }
