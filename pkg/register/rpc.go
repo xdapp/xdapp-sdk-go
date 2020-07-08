@@ -13,6 +13,7 @@ import (
 func DoFunctionList() string {
 	return "Fa{}z"
 }
+var hproseService *rpc.TCPService
 
 // 执行结果
 func (reg *register) RpcHandle(header Header, data []byte) []byte {
@@ -49,6 +50,11 @@ func (reg *register) AddFilter(filter ...rpc.Filter) {
 func (reg *register) AddWebFunction(name string, function interface{}) {
 	funcName := fmt.Sprintf("%s_%s", config.Name, name)
 	reg.HproseService.AddFunction(funcName, function, rpc.Options{Simple: true})
+}
+
+// Simple 简单数据 https://github.com/hprose/hprose-golang/wiki/Hprose-%E6%9C%8D%E5%8A%A1%E5%99%A8
+func AddFunction(name string, function interface{}) {
+	hproseService.AddFunction(name, function, rpc.Options{Simple: true})
 }
 
 func (reg *register) AddWebInstanceMethods(obj interface{}, namespace string) {

@@ -43,8 +43,8 @@ type register struct {
 	lg            logger
 	cfg           *Config
 	conn          *clientConn                 // tcp客户端连接
-	RegSuccess    bool                        // 注册成功标志
-	ServiceData   map[interface{}]interface{} // console 注册成功返回的页面服务器信息
+	regSuccess    bool                        // 注册成功标志
+	serviceData   map[interface{}]interface{} // console 注册成功返回的页面服务器信息
 	HproseService *rpc.TCPService             // hprose service
 }
 
@@ -88,13 +88,14 @@ func New(cfg *Config) (*register, error) {
 
 	lg = cfg.Logger()
 	config = cfg
+	hproseService = rpc.NewTCPService()
 
 	return &register{
 		cfg:           cfg,
 		lg:            lg,
-		RegSuccess:    false,
-		ServiceData:   nil,
-		HproseService: rpc.NewTCPService(),
+		regSuccess:    false,
+		serviceData:   nil,
+		HproseService: hproseService,
 	}, nil
 }
 
@@ -182,7 +183,7 @@ func (reg *register) GetKey() string {
 }
 
 func (reg *register) SetRegSuccess(isReg bool) {
-	reg.RegSuccess = isReg
+	reg.regSuccess = isReg
 }
 
 func (reg *register) SetServiceData(data interface{}) error {
@@ -190,7 +191,7 @@ func (reg *register) SetServiceData(data interface{}) error {
 	if !ok {
 		return errors.New("regOK serviceData is illegal")
 	}
-	reg.ServiceData = svrData
+	reg.serviceData = svrData
 	return nil
 }
 

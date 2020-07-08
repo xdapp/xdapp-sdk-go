@@ -8,7 +8,7 @@ import (
 // 测试注册服务
 func main() {
 	reg, err := register.New(&register.Config{
-		App: "ro",
+		App: "demo",
 		Name: "gm",
 		Key: "123456",
 		Debug: false,

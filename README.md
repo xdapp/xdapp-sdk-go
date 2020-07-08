@@ -32,10 +32,10 @@ go mod tidy
 
 ```golang
 type logger interface {
-    Debug(msg string)
-    Info(msg string)
-    Warn(msg string)
-    Error(msg string)
+  Debug(msg string)
+  Info(msg string)
+  Warn(msg string)
+  Error(msg string)
 }
 ```
 reg.SetLogger(xxx)
@@ -68,55 +68,54 @@ package main
 package main
 
 import (
-	"github.com/xdapp/xdapp-sdk-go/pkg/register"
-	"github.com/xdapp/xdapp-sdk-go/pkg/types"
-	"github.com/xdapp/xdapp-sdk-go/service"
+  "github.com/xdapp/xdapp-sdk-go/pkg/register"
+  "github.com/xdapp/xdapp-sdk-go/pkg/types"
+  "github.com/xdapp/xdapp-sdk-go/service"
 )
 
 // 测试注册服务
 func main() {
 
-	// 其中 demo 为项目名，gm 为服务名，aaaaaaaaaa 为密钥
-	reg, err := register.New(&register.Config{
-		// prod:正式环境|dev:测试环境|global:海外环境|自定义环境不传 设置Sever参数
-		// Env: "prod",
-		
-        // 自定义测试环境参数
-		Server: &types.Server{
-			Host: "127.0.0.1",
-			Port: 8900,
-			Ssl: false,
-		},
-
-		App: "demo",
-		Name: "gm",
-		Key: "xx",
-		LogOutputs: []string{"stderr", "debug"},
-		Debug: true,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	/**
-	 * 注册单个前端页面可访问的rpc方法 （内部会加上服务名gm作前缀）
-	 * (!!! 请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
-	 * 等同于
-	 * register.AddFunction("gm_hello", func() string {return "hello world"})
-	 * 页面请求方法 hello
-	 */
-	reg.AddWebFunction("hello", func() string {return "hello world"})
-
-	/**
-	 * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
-	 * namespace: test, 页面请求方法 test_xxx
-	 * namespace可传空,  页面请求方法 xxx
-	 */
-	reg.AddWebInstanceMethods(
-		&service.TestService{Name: "test"}, "test")
-
-	// 读取配置连接
-	reg.Connect()
+  // 其中 demo 为项目名，gm 为服务名，aaaaaaaaaa 为密钥
+  reg, err := register.New(&register.Config{
+    // prod:正式环境|dev:测试环境|global:海外环境|自定义环境不传 设置Sever参数
+    // Env: "prod",
+    
+  // 自定义测试环境参数
+    Server: &types.Server{
+      Host: "127.0.0.1",
+      Port: 8900,
+      Ssl: false,
+    },
+  
+    App: "demo",
+    Name: "gm",
+    Key: "xx",
+    LogOutputs: []string{"stderr", "debug"},
+    Debug: true,
+  })
+  if err != nil {
+    panic(err)
+  }
+  
+  /**
+   * 注册单个前端页面可访问的rpc方法 （内部会加上服务名gm作前缀）
+   * (!!! 请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
+   * 等同于
+   * register.AddFunction("gm_hello", func() string {return "hello world"})
+   * 页面请求方法 hello
+   */
+  reg.AddWebFunction("hello", func() string {return "hello world"})
+  
+  /**
+   * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
+   * namespace: test, 页面请求方法 test_xxx
+   * namespace可传空,  页面请求方法 xxx
+   */
+  reg.AddWebInstanceMethods(&service.TestService{Name: "test"}, "test")
+  
+  // 读取配置连接
+  reg.Connect()
 }
 
 ```
@@ -127,53 +126,52 @@ func main() {
 package main
 
 import (
-    "github.com/xdapp/xdapp-sdk-go/pkg/register"
-    "github.com/xdapp/xdapp-sdk-go/service"
+  "github.com/xdapp/xdapp-sdk-go/pkg/register"
+  "github.com/xdapp/xdapp-sdk-go/service"
 )
 
 // 测试注册服务
 func main() {
-    // 其中 demo 为项目名，gm 为服务名，aaaaaaaaaa 为密钥
-    reg, err := register.New(&register.Config{
-		App: "demo",
-		Name: "gm",
-		Key: "xx",
-		LogOutputs: []string{"stderr", "debug"},
-		Debug: true,
-    })
-    if err != nil {
-        panic(err)
-    }
+  // 其中 demo 为项目名，gm 为服务名，aaaaaaaaaa 为密钥
+  reg, err := register.New(&register.Config{
+  App: "demo",
+  Name: "gm",
+  Key: "xx",
+  LogOutputs: []string{"stderr", "debug"},
+  Debug: true,
+  })
+  if err != nil {
+  panic(err)
+  }
 
-    /**
-     * 注册单个前端页面可访问的rpc方法 （内部会加上服务名gm作前缀）
-     * (!!! 请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
-     * 等同于
-     * register.AddFunction("gm_hello", func() string {return "hello world"})
-     * 页面请求方法 hello
-     */
-    reg.AddWebFunction("hello", func() string {
-        return "hello world"
-    })
+  /**
+   * 注册单个前端页面可访问的rpc方法 （内部会加上服务名gm作前缀）
+   * (!!! 请注意，只有服务名相同的前缀rpc方法才会被页面前端调用到)
+   * 等同于
+   * register.AddFunction("gm_hello", func() string {return "hello world"})
+   * 页面请求方法 hello
+   */
+  reg.AddWebFunction("hello", func() string {
+  return "hello world"
+  })
 
-    /**
-     * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
-     * namespace: test, 页面请求方法 test_xxx
-     * namespace可传空,  页面请求方法 xxx
-     */
-    reg.AddWebInstanceMethods(
-        &service.TestService{Name: "test"}, "test")
+  /**
+   * 注册某个struct下所有对外的方法 （内部会加上服务名前缀gm）
+   * namespace: test, 页面请求方法 test_xxx
+   * namespace可传空,  页面请求方法 xxx
+   */
+  reg.AddWebInstanceMethods(&service.TestService{Name: "test"}, "test")
 
-    reg.ConnectTo("127.0.0.1", 8900, false)
+  reg.ConnectTo("127.0.0.1", 8900, false)
 
-    // 连接到外网测试服务器
-    //reg.ConnectToDev()
+  // 连接到外网测试服务器
+  //reg.ConnectToDev()
 
-    // 连接到生产环境(国内项目)
-    //reg.ConnectToProduce()
+  // 连接到生产环境(国内项目)
+  //reg.ConnectToProduce()
 
-    // 连接到生产环境(海外项目)
-    // reg.ConnectToGlobal()
+  // 连接到生产环境(海外项目)
+  // reg.ConnectToGlobal()
 }
 ```
 
@@ -201,7 +199,7 @@ syntax = "proto3";
 package test.api.v1;
 
 service TextCheck {
-    rpc HelloWorld(google.protobuf.Empty) returns(google.protobuf.Empty);
+  rpc HelloWorld(google.protobuf.Empty) returns(google.protobuf.Empty);
 }
 ```
 ```js
@@ -229,9 +227,9 @@ func main() {
 	}
 
 	reg, err := register.New(&register.Config{
-		App:     "test", // 请修改对应的App缩写
-		Name:    "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
-		Key:     "test", // 从服务管理中添加服务后获取
+		App:   "test", // 请修改对应的App缩写
+		Name:  "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
+		Key:   "test", // 从服务管理中添加服务后获取
 		Debug: false,
 	})
 
