@@ -8,6 +8,9 @@ var (
 	DebugRetryTCPMessage = "[tcp] RPC服务连接关闭，等待重新连接"
 
 	ErrRequireApp         = errors.New("[初始化] 配置app为空")
+	ErrRequireServer      = errors.New("[初始化] 配置server为空")
+	ErrRequireHost        = errors.New("[初始化] 配置host为空")
+	ErrRequirePort        = errors.New("[初始化] 配置port为空")
 	ErrRequireServiceName = errors.New("[初始化] 配置service name为空")
 	ErrRequireServiceKey  = errors.New("[初始化] 配置service key为空")
 

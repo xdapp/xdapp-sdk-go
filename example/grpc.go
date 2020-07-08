@@ -2,8 +2,7 @@ package main
 
 import (
 	"github.com/xdapp/xdapp-sdk-go/pkg/middleware"
-	"github.com/xdapp/xdapp-sdk-go/register"
-	"github.com/xdapp/xdapp-sdk-go/service"
+	"github.com/xdapp/xdapp-sdk-go/pkg/register"
 	"google.golang.org/grpc"
 )
 
@@ -28,8 +27,7 @@ func main() {
 		panic(err)
 	}
 
-	register.AddSysFunction(&service.SysService{Register: reg})
-	register.AddBeforeFilterHandler(proxy.Handler)
+	reg.AddBeforeFilterHandler(proxy.Handler)
 
 	reg.ConnectToDev()
 }

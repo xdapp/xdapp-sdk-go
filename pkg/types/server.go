@@ -1,25 +1,30 @@
 package types
 
-type server struct {
+type Server struct {
 	Host string
 	Port int
 	Ssl bool
 }
+const (
+	EnvironmentProd   = "prod"
+	EnvironmentDev    = "dev"
+	EnvironmentGlobal = "global"
+)
 
 var (
-	ProductionServer = &server{
+	ProductionServer = &Server{
 		Host: "service-prod.xdapp.com",
 		Port: 8900,
 		Ssl: true,
 	}
 
-	DevServer = &server{
+	DevServer = &Server{
 		Host: "dev.xdapp.com",
 		Port: 8100,
 		Ssl: true,
 	}
 
-	GlobalServer = &server{
+	GlobalServer = &Server{
 		Host: "service-gcp.xdapp.com",
 		Port: 8900,
 		Ssl: true,

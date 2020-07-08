@@ -19,13 +19,16 @@ import (
 )
 
 type Config struct {
+	*types.Server									// 自定义服务参数
+	Env				 string 						// 环境 dev、prod、global 不传则读Server配置
+
 	App              string   						// 游戏简称
 	Name             string   						// 游戏名字
 	Key              string   						// 服务器秘钥
 	Version          int       						// 服务器版本
-	Debug            bool   `json:"debug"`  		// debug模式
+	Debug            bool     `json:"debug"`  		// debug模式
 	PackageMaxLength int      						// tcp最大长度 默认2M
-	LogOutputs       []string `json:"log_outputs"`	// 输出格式 默认 []string{"stdout"}
+	LogOutputs       []string `json:"log_outputs"`	// 输出格式 默认 []string{"stdout"} 需要落地到debug.log eg: []string{"stdout", "debug.log"}
 
 	loggerMu      *sync.RWMutex
 	logger        *zap.Logger
@@ -46,8 +49,8 @@ type register struct {
 }
 
 var (
-	config *Config
 	lg     logger // zap logger
+	config *Config
 )
 
 func New(cfg *Config) (*register, error) {
@@ -68,12 +71,17 @@ func New(cfg *Config) (*register, error) {
 		cfg.PackageMaxLength = types.PackageMaxLength
 	}
 
+	err := cfg.setServerConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	if len(cfg.LogOutputs) == 0 {
 		cfg.LogOutputs = []string{"stdout"}
 	}
 
 	// set zap logger
-	err := cfg.setupLogging()
+	err = cfg.setupLogging()
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +96,33 @@ func New(cfg *Config) (*register, error) {
 		ServiceData:   nil,
 		HproseService: rpc.NewTCPService(),
 	}, nil
+}
+
+// set server config
+func (cfg *Config) setServerConfig() error {
+	if cfg.Env == types.EnvironmentProd {
+		cfg.Server = types.ProductionServer
+	} else if cfg.Env == types.EnvironmentDev {
+		cfg.Server = types.DevServer
+	} else if cfg.Env == types.EnvironmentGlobal {
+		cfg.Server = types.GlobalServer
+	}
+	return nil
+}
+
+// connect server config
+func (reg *register) Connect() {
+	s := reg.cfg
+	if s.Server == nil {
+		panic(types.ErrRequireServer)
+	}
+	if s.Host == "" {
+		panic(types.ErrRequireHost)
+	}
+	if s.Port == 0 {
+		panic(types.ErrRequirePort)
+	}
+	reg.ConnectTo(s.Host, s.Port, s.Ssl)
 }
 
 func (reg *register) ConnectToProduce() {
@@ -204,8 +239,9 @@ func (reg *register) RpcCall(
 }
 
 // SetLogger replace default logger
-func (reg *register) SetLogger(lg logger) {
-	reg.lg = lg
+func (reg *register) SetLogger(log logger) {
+	reg.lg = log
+	lg = log
 }
 
 // get logger
