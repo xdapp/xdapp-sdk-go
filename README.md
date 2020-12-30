@@ -188,6 +188,7 @@ SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求
 * Console后台的服务名将为协议包根目录名称
 * GRPC协议中的类型会按照谷歌定义的[JSON Mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) 做转换
 * 前端请求时注意带上完整包名请求，并且严格区分大小写
+* 使用转发的服务不支持传统的注册RPC方法
 
 
 [GRPC server 测试服务](example/grpc/server/server.go)
