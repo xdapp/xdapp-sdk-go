@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// 服务名：test
+package testgrpc.api.v1;
+
+message TextCheckReq {
+  string req = 1;
+}
+
+message TextCheckResp {
+  string resp = 1;
+}
+
+service TextCheck {
+  rpc HelloWorld(TextCheckReq) returns(TextCheckResp);
+}

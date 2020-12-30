@@ -1,0 +1,10 @@
+
+Ö
+example/grpc/pb/test.prototestgrpc.api.v1" 
+TextCheckReq
+req (	Rreq"#
+TextCheckResp
+resp (	Rresp2X
+	TextCheckK
+
+HelloWorld.testgrpc.api.v1.TextCheckReq.testgrpc.api.v1.TextCheckRespbproto3

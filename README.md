@@ -189,6 +189,9 @@ SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求
 * GRPC协议中的类型会按照谷歌定义的[JSON Mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) 做转换
 * 前端请求时注意带上完整包名请求，并且严格区分大小写
 
+
+[GRPC server 测试服务](example/grpc/server/server.go)
+
 前端调用例子
 ```proto3
 # pb协议
@@ -197,8 +200,16 @@ syntax = "proto3";
 # 服务名：test
 package test.api.v1;
 
+message TextCheckReq {
+  string req = 1;
+}
+
+message TextCheckResp {
+  string resp = 1;
+}
+
 service TextCheck {
-  rpc HelloWorld(google.protobuf.Empty) returns(google.protobuf.Empty);
+  rpc HelloWorld(TextCheckReq) returns(TextCheckResp);
 }
 ```
 ```js
@@ -216,34 +227,38 @@ import (
 )
 
 func main() {
-	// grpc service IP地址
-	address := "localhost:8080"
-	// grpc协议描述文件，参考：https://github.com/fullstorydev/grpcurl#protoset-files
-	descriptor := []string{"./example/service.protoset"}
-	proxy, err := middleware.NewGRPCProxyMiddleware(address, descriptor, grpc.WithInsecure())
-	if err != nil {
-		panic(err)
-	}
+    reg, err := register.New(&register.Config{
+        App:     "test", // 请修改对应的App缩写
+        Name:    "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
+        Key:     "test", // 从服务管理中添加服务后获取
+        Debug: false,
+    })
 
-	reg, err := register.New(&register.Config{
-		App:   "test", // 请修改对应的App缩写
-		Name:  "test", // 请填入服务名，若协议Package为xdapp.api.v1则填入xdapp即可
-		Key:   "test", // 从服务管理中添加服务后获取
-		Debug: false,
-	})
+    if err != nil {
+        panic(err)
+    }
 
-	if err != nil {
-		panic(err)
-	}
+    // !!! 注意顺序 先register.New
+    // grpc service IP地址
+    address := "localhost:7777"
+    // grpc协议描述文件，参考：https://github.com/fullstorydev/grpcurl#protoset-files
+    descriptor := []string{"./example/grpc/test.protoset"}
+    proxy, err := middleware.NewGRPCProxyMiddleware(address, descriptor, grpc.WithInsecure())
+    if err != nil {
+        panic(err)
+    }
 
-	reg.AddBeforeFilterHandler(proxy.Handler)
+    reg.AddBeforeFilterHandler(proxy.Handler)
 
-	reg.ConnectToDev()
+    reg.ConnectToDev()
 }
 ```
 
 Changelog
 ----------
+
+### v1.1.1
+1、更新GRPC example、转发README
 
 ### v1.1.0
 1. change register path;<br/>
