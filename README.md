@@ -193,6 +193,11 @@ SDK支持转发GRPC，通过协议文件描述符反射的方式转发请求
 
 [GRPC server 测试服务](example/grpc/server/server.go)
 
+
+```
+ps: 当使用后台配置GM工具，grpc返回resp一定要返回status、message 字段
+```
+
 前端调用例子
 ```proto3
 # pb协议
@@ -206,7 +211,9 @@ message TextCheckReq {
 }
 
 message TextCheckResp {
-  string resp = 1;
+  int32 status = 1;      // 状态    （后台GM工具必填）  1: 成功
+  string message = 2;    // 返回信息 （后台GM工具必填）
+  string resp = 3;
 }
 
 service TextCheck {
@@ -257,6 +264,8 @@ func main() {
 
 Changelog
 ----------
+### v1.1.2
+1、优化GRPC example及后台GM工具使用必填参数
 
 ### v1.1.1
 1、更新GRPC example、转发README

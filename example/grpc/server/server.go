@@ -20,7 +20,7 @@ type UserService struct {}
 func (userService *UserService) HelloWorld(ctx context.Context, req *pb.TextCheckReq) (*pb.TextCheckResp, error) {
 	log.Printf("HelloWorld 执行中")
 
-	return &pb.TextCheckResp{Resp: "hello"}, nil
+	return &pb.TextCheckResp{Status:1, Message: "success", Resp: "hello", AdminId: 1, AdminName: "施利鸣"}, nil
 }
 
 func main() {

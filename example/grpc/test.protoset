@@ -1,10 +1,16 @@
 
-Ö
-example/grpc/pb/test.prototestgrpc.api.v1" 
+Ò
+example/grpc/pb/test.protopb"X
 TextCheckReq
-req (	Rreq"#
-TextCheckResp
-resp (	Rresp2X
-	TextCheckK
+req (	Rreq
+adminId (RadminId
+	adminName (	R	adminName"
+TextCheckResp
+status (Rstatus
+message (	Rmessage
+resp (	Rresp
+adminId (RadminId
+	adminName (	R	adminName2>
+	TextCheck1
 
-HelloWorld.testgrpc.api.v1.TextCheckReq.testgrpc.api.v1.TextCheckRespbproto3
+HelloWorld.pb.TextCheckReq.pb.TextCheckRespbproto3

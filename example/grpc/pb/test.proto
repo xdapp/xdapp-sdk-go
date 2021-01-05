@@ -1,14 +1,20 @@
 syntax = "proto3";
 
 // 服务名：test
-package testgrpc.api.v1;
+package pb;
 
 message TextCheckReq {
   string req = 1;
+  uint64 adminId = 2;
+  string adminName = 3;
 }
 
 message TextCheckResp {
-  string resp = 1;
+  int32 status = 1;      // 状态    后台GM工具必填  1: 成功
+  string message = 2;    // 返回信息 后台GM工具必填
+  string resp = 3;
+  uint64 adminId = 4;
+  string adminName = 5;
 }
 
 service TextCheck {
