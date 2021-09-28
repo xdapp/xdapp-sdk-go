@@ -206,14 +206,14 @@ func transportRpcRequest(c tao.WriteCloser, flag byte, ver byte, header Header, 
 		// get smaller
 		sendLen := types.ProtocolSendChunkLength
 		if sendLen > bodyLen-i {
-			sendLen = bodyLen-i
+			sendLen = bodyLen - i
 		}
 
-		if bodyLen - i == sendLen {
+		if bodyLen-i == sendLen {
 			flag |= types.ProtocolFlagFinish
 		}
 
-		chunk := body[i:sendLen]
+		chunk := body[i : sendLen+i]
 		prefix := Prefix{
 			Flag:   uint8(flag),
 			Ver:    ver,
